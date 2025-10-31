@@ -32,6 +32,7 @@ public class AuthServicempl implements AuthService{
          if(userRepository.save(user) != null)
          {
             return new Appendable(true , RuntimeException("User CReate avec sucic"));
+
          };
     }
 

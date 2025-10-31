@@ -10,30 +10,28 @@ import java.util.Optional;
 @Service
 public class AuthServicempl implements AuthService{
 
-        @Autowired
-        private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-        public boolean login(String email, String password) {
-            Optional<User> userOpt = userRepository.findByEmail(email);
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                return user.getPassword().equals(password);
-            }
-            return false;
+    public boolean login(String email, String password) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            return user.getPassword().equals(password);
         }
-
-    public RuntimeException register(User user) {
-        Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
-        if (existingUser.isPresent()) {
-            return new Appendable(false , RuntimeException("Email déjà utilisé !"));
-        }
-
-         if(userRepository.save(user))
-         {
-
-         };
+        return false;
     }
 
+    @Override
+    public User register(User user) {
+        Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
+
+        if (existingUser.isPresent()) {
+            throw new RuntimeException("User et dija exist ");
+        }
+        return userRepository.save(user);
+    }
 
 
 

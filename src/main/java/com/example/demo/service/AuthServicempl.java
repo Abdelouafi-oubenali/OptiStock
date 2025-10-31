@@ -13,11 +13,12 @@ public class AuthServicempl implements AuthService{
         @Autowired
         private UserRepository userRepository;
 
-        public boolean login(String email, String password) {
+        public RuntimeException login(String email, String password) {
             Optional<User> userOpt = userRepository.findByEmail(email);
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
-                return user.getPassword().equals(password);
+                user.getPassword().equals(password);
+                return new Appendable(true , "user" + user.get)
             }
             return false;
         }
@@ -28,18 +29,10 @@ public class AuthServicempl implements AuthService{
             return new Appendable(false , RuntimeException("Email déjà utilisé !"));
         }
 
-         if(userRepository.save(user))
+         if(userRepository.save(user) != null)
          {
-
+            return new Appendable(true , RuntimeException("User CReate avec sucic"));
          };
-
-
-
-
     }
-
-
-
-
 
 }

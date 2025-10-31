@@ -4,6 +4,9 @@ services:
     container_name: spring_app
     ports:
       - "8080:8080"
+    volumes:
+      - ./src:/app/src
+      - ./pom.xml:/app/pom.xml
     depends_on:
       - postgres
     environment:

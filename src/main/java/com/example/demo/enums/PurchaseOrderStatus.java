@@ -2,10 +2,8 @@ package com.example.demo.enums;
 
 public enum PurchaseOrderStatus {
     DRAFT,
-    CREATED ,
-    RECEIVED ,
-    APPROVED ,
-    CANCELED
-
-
+    CREATED,
+    RECEIVED,
+    APPROVED,
+    CANCELLED
 }

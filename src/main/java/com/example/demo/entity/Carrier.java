@@ -26,7 +26,6 @@ public class Carrier {
     @Enumerated(EnumType.STRING)
     private CarrierStatus status;
 
-
     // CORRECTION - ajouter cette relation
     @OneToMany(mappedBy = "carrier", fetch = FetchType.LAZY)
     private List<Shipment> shipments;

@@ -21,4 +21,7 @@ public class Supplier {
     @OneToMany(mappedBy = "supplier", fetch = FetchType.LAZY)
     private List<PurchaseOrder> purchaseOrders;
 
+    @Column(nullable = false)
+    private Boolean active = true;
+
 }

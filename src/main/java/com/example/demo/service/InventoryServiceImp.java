@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,7 +25,14 @@ public class InventoryServiceImp implements InventoryService {
 
     @Override
     public InventoryDTO createInventory(InventoryDTO inventoryDTO) {
+        Optional<Inventory> existingInventory = inventoryRepository
+                .findByProductIdAndWarehouseId(inventoryDTO.getProduct_id(), inventoryDTO.getWarehouse_id()) ;
+        if (existingInventory.isPresent()) {
+            throw new RuntimeException("Un inventory pour ce produit dans ce warehouse existe déjà !");
+        }
+
         Inventory inventory = toEntity(inventoryDTO);
+
         Inventory saved = inventoryRepository.save(inventory);
         return toDto(saved);
     }
@@ -46,6 +54,13 @@ public class InventoryServiceImp implements InventoryService {
 
     @Override
     public InventoryDTO updateInventory(UUID id, InventoryDTO inventoryDTO) {
+
+        Optional<Inventory> existingInventoryProducts = inventoryRepository
+                .findByProductIdAndWarehouseId(inventoryDTO.getProduct_id(), inventoryDTO.getWarehouse_id()) ;
+        if (existingInventoryProducts.isPresent()) {
+            throw new RuntimeException("Un inventory pour ce produit dans ce warehouse existe déjà !");
+        }
+
         Inventory existingInventory = inventoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Inventory non trouvé avec l'id: " + id));
 

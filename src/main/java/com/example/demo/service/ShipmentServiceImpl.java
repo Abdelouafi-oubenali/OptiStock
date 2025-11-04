@@ -13,8 +13,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,18 +33,32 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     @Transactional
     public ShipmentDTO createShipment(ShipmentDTO shipmentDTO) {
-        // Vérifier si le numéro de suivi existe déjà
         if (shipmentRepository.existsByTrackingNumber(shipmentDTO.getTrackingNumber())) {
-            throw new RuntimeException("Tracking number already exists: " + shipmentDTO.getTrackingNumber());
+            throw new RuntimeException("Le numéro de suivi existe déjà : " + shipmentDTO.getTrackingNumber());
         }
 
-        // Vérifier si la commande existe
         SalesOrder salesOrder = salesOrderRepository.findById(shipmentDTO.getSalesOrderId())
-                .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + shipmentDTO.getSalesOrderId()));
+                .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + shipmentDTO.getSalesOrderId()));
 
-        // Vérifier si le transporteur existe
         Carrier carrier = carrierRepository.findById(shipmentDTO.getCarrierId())
-                .orElseThrow(() -> new RuntimeException("Carrier not found with id: " + shipmentDTO.getCarrierId()));
+                .orElseThrow(() -> new RuntimeException("Transporteur introuvable avec l'id : " + shipmentDTO.getCarrierId()));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        Consumer<LocalDateTime> checkDate = (dateTime) -> {
+            if (dateTime != null) {
+                if (dateTime.isBefore(now)) {
+                    throw new RuntimeException("La date ne peut pas être dans le passé.");
+                }
+                if (dateTime.toLocalTime().isAfter(LocalTime.of(15, 0))) {
+                    throw new RuntimeException("Impossible d’entrer une heure après 15:00, quel que soit le jour.");
+                }
+            }
+        };
+
+        checkDate.accept(shipmentDTO.getPlannedDate());
+        checkDate.accept(shipmentDTO.getShippedDate());
+        checkDate.accept(shipmentDTO.getDeliveredDate());
 
         Shipment shipment = new Shipment();
         shipment.setTrackingNumber(shipmentDTO.getTrackingNumber());
@@ -53,6 +72,7 @@ public class ShipmentServiceImpl implements ShipmentService {
         Shipment savedShipment = shipmentRepository.save(shipment);
         return convertToDTO(savedShipment);
     }
+
 
     @Override
     public ShipmentDTO getShipmentById(UUID id) {
@@ -73,37 +93,52 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Transactional
     public ShipmentDTO updateShipment(UUID id, ShipmentDTO shipmentDTO) {
         Shipment existingShipment = shipmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Shipment not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Expédition introuvable avec l'id: " + id));
 
-        // Vérifier l'unicité du tracking number (sauf pour l'entité actuelle)
         if (!existingShipment.getTrackingNumber().equals(shipmentDTO.getTrackingNumber()) &&
                 shipmentRepository.existsByTrackingNumber(shipmentDTO.getTrackingNumber())) {
-            throw new RuntimeException("Tracking number already exists: " + shipmentDTO.getTrackingNumber());
+            throw new RuntimeException("Le numéro de suivi existe déjà : " + shipmentDTO.getTrackingNumber());
         }
 
-        // Mettre à jour les champs de base
+        LocalDateTime now = LocalDateTime.now();
+
+        Consumer<LocalDateTime> checkDate = (dateTime) -> {
+            if (dateTime != null) {
+                if (dateTime.isBefore(now)) {
+                    throw new RuntimeException("La date ne peut pas être dans le passé.");
+                }
+                if (dateTime.toLocalTime().isAfter(LocalTime.of(15, 0))) {
+                    throw new RuntimeException("Impossible d’entrer une heure après 15:00, quel que soit le jour.");
+                }
+            }
+        };
+
+        checkDate.accept(shipmentDTO.getPlannedDate());
+        checkDate.accept(shipmentDTO.getShippedDate());
+        checkDate.accept(shipmentDTO.getDeliveredDate());
+
         existingShipment.setTrackingNumber(shipmentDTO.getTrackingNumber());
         existingShipment.setStatus(shipmentDTO.getStatus());
         existingShipment.setPlannedDate(shipmentDTO.getPlannedDate());
         existingShipment.setShippedDate(shipmentDTO.getShippedDate());
         existingShipment.setDeliveredDate(shipmentDTO.getDeliveredDate());
 
-        // Mettre à jour les relations si fournies
         if (shipmentDTO.getSalesOrderId() != null) {
             SalesOrder salesOrder = salesOrderRepository.findById(shipmentDTO.getSalesOrderId())
-                    .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + shipmentDTO.getSalesOrderId()));
+                    .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id: " + shipmentDTO.getSalesOrderId()));
             existingShipment.setSalesOrder(salesOrder);
         }
 
         if (shipmentDTO.getCarrierId() != null) {
             Carrier carrier = carrierRepository.findById(shipmentDTO.getCarrierId())
-                    .orElseThrow(() -> new RuntimeException("Carrier not found with id: " + shipmentDTO.getCarrierId()));
+                    .orElseThrow(() -> new RuntimeException("Transporteur introuvable avec l'id: " + shipmentDTO.getCarrierId()));
             existingShipment.setCarrier(carrier);
         }
 
         Shipment updatedShipment = shipmentRepository.save(existingShipment);
         return convertToDTO(updatedShipment);
     }
+
 
     @Override
     @Transactional

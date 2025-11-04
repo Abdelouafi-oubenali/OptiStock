@@ -1,9 +1,12 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.dto.InventoryDTO;
 import com.example.demo.dto.SalesOrderLineDTO;
+import com.example.demo.entity.Inventory;
 import com.example.demo.entity.SalesOrder;
 import com.example.demo.entity.SalesOrderLine;
 import com.example.demo.entity.Product;
+import com.example.demo.repository.InventoryRepository;
 import com.example.demo.repository.SalesOrderLineRepository;
 import com.example.demo.repository.SalesOrderRepository;
 import com.example.demo.repository.ProductRepository;
@@ -23,17 +26,27 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
     private final SalesOrderLineRepository salesOrderLineRepository;
     private final SalesOrderRepository salesOrderRepository;
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository ;
 
     @Override
     @Transactional
+
     public SalesOrderLineDTO createSalesOrderLine(SalesOrderLineDTO salesOrderLineDTO) {
-        // Vérifier si la commande existe
         SalesOrder salesOrder = salesOrderRepository.findById(salesOrderLineDTO.getSales_order_id())
                 .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + salesOrderLineDTO.getSales_order_id()));
 
-        // Vérifier si le produit existe
         Product product = productRepository.findById(salesOrderLineDTO.getProduct_id())
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + salesOrderLineDTO.getProduct_id()));
+
+        Inventory inventory = inventoryRepository.findByProductId(salesOrderLineDTO.getProduct_id());
+
+        if (inventory == null) {
+            throw new RuntimeException("Inventory not found for product id: " + salesOrderLineDTO.getProduct_id());
+        }
+
+        if (salesOrderLineDTO.getQuantity() > inventory.getQtyOnHand()) {
+            throw new RuntimeException("Insufficient stock for product id: " + salesOrderLineDTO.getProduct_id());
+        }
 
         SalesOrderLine salesOrderLine = new SalesOrderLine();
         salesOrderLine.setSalesOrder(salesOrder);
@@ -43,8 +56,14 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
         salesOrderLine.setBackorder(salesOrderLineDTO.isBackorder());
 
         SalesOrderLine savedLine = salesOrderLineRepository.save(salesOrderLine);
+
+        Integer updatedQuantity = inventory.getQtyOnHand() - salesOrderLineDTO.getQuantity();
+        inventory.setQtyOnHand(updatedQuantity);
+        inventoryRepository.save(inventory);
+
         return convertToDTO(savedLine);
     }
+
 
     @Override
     public SalesOrderLineDTO getSalesOrderLineById(UUID id) {

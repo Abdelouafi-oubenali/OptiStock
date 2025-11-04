@@ -23,6 +23,6 @@ public class SalesOrderDTO {
     @NotNull(message = "Le status de sales order est requis !!")
     private OrderStatus orderStatus;
 
-    private List<SalesOrderLineDTO> orderLines;
+
 
 }

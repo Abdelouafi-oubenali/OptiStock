@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
     List<Inventory> findByWarehouseId(UUID warehouseId);
-    List<Inventory> findByProductId(UUID productId);
+    Inventory findByProductId(UUID productId);
     List<Inventory> findByQtyOnHandGreaterThan(Integer qty);
     Optional<Inventory> findByProductIdAndWarehouseId(UUID productId, UUID warehouseId);
 

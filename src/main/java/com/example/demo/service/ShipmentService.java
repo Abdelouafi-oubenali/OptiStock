@@ -15,4 +15,5 @@ public interface ShipmentService {
     List<ShipmentDTO> getShipmentsByOrder(UUID salesOrderId);
     List<ShipmentDTO> getShipmentsByCarrier(UUID carrierId);
     List<ShipmentDTO> getShipmentsByStatus(ShipmentStatus status);
+     ShipmentDTO updateShipmentStatus(UUID id, ShipmentStatus status) ;
 }

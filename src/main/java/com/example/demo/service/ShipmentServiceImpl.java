@@ -20,6 +20,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,27 +46,31 @@ public class ShipmentServiceImpl implements ShipmentService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        Consumer<LocalDateTime> checkDate = (dateTime) -> {
-            if (dateTime != null) {
-                if (dateTime.isBefore(now)) {
-                    throw new RuntimeException("La date ne peut pas être dans le passé.");
-                }
-                if (dateTime.toLocalTime().isAfter(LocalTime.of(15, 0))) {
-                    throw new RuntimeException("Impossible d’entrer une heure après 15:00, quel que soit le jour.");
-                }
+        Function<LocalDateTime, LocalDateTime> adjustDate = (dateTime) -> {
+            if (dateTime == null) return null;
+
+            if (dateTime.isBefore(now)) {
+                throw new RuntimeException("La date ne peut pas être dans le passé.");
             }
+
+            // Si l'heure dépasse 15:00, décaler au lendemain 09:00
+            if (dateTime.toLocalTime().isAfter(LocalTime.of(15, 0))) {
+                return dateTime.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
+            }
+
+            return dateTime;
         };
 
-        checkDate.accept(shipmentDTO.getPlannedDate());
-        checkDate.accept(shipmentDTO.getShippedDate());
-        checkDate.accept(shipmentDTO.getDeliveredDate());
+        LocalDateTime plannedDate = adjustDate.apply(shipmentDTO.getPlannedDate());
+        LocalDateTime shippedDate = adjustDate.apply(shipmentDTO.getShippedDate());
+        LocalDateTime deliveredDate = adjustDate.apply(shipmentDTO.getDeliveredDate());
 
         Shipment shipment = new Shipment();
         shipment.setTrackingNumber(shipmentDTO.getTrackingNumber());
         shipment.setStatus(shipmentDTO.getStatus());
-        shipment.setPlannedDate(shipmentDTO.getPlannedDate());
-        shipment.setShippedDate(shipmentDTO.getShippedDate());
-        shipment.setDeliveredDate(shipmentDTO.getDeliveredDate());
+        shipment.setPlannedDate(plannedDate);
+        shipment.setShippedDate(shippedDate);
+        shipment.setDeliveredDate(deliveredDate);
         shipment.setSalesOrder(salesOrder);
         shipment.setCarrier(carrier);
 
@@ -102,26 +107,29 @@ public class ShipmentServiceImpl implements ShipmentService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        Consumer<LocalDateTime> checkDate = (dateTime) -> {
-            if (dateTime != null) {
-                if (dateTime.isBefore(now)) {
-                    throw new RuntimeException("La date ne peut pas être dans le passé.");
-                }
-                if (dateTime.toLocalTime().isAfter(LocalTime.of(15, 0))) {
-                    throw new RuntimeException("Impossible d’entrer une heure après 15:00, quel que soit le jour.");
-                }
+        Function<LocalDateTime, LocalDateTime> adjustDate = (dateTime) -> {
+            if (dateTime == null) return null;
+
+            if (dateTime.isBefore(now)) {
+                throw new RuntimeException("La date ne peut pas être dans le passé.");
             }
+
+            if (dateTime.toLocalTime().isAfter(LocalTime.of(15, 0))) {
+                return dateTime.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
+            }
+
+            return dateTime;
         };
 
-        checkDate.accept(shipmentDTO.getPlannedDate());
-        checkDate.accept(shipmentDTO.getShippedDate());
-        checkDate.accept(shipmentDTO.getDeliveredDate());
+        LocalDateTime plannedDate = adjustDate.apply(shipmentDTO.getPlannedDate());
+        LocalDateTime shippedDate = adjustDate.apply(shipmentDTO.getShippedDate());
+        LocalDateTime deliveredDate = adjustDate.apply(shipmentDTO.getDeliveredDate());
 
         existingShipment.setTrackingNumber(shipmentDTO.getTrackingNumber());
         existingShipment.setStatus(shipmentDTO.getStatus());
-        existingShipment.setPlannedDate(shipmentDTO.getPlannedDate());
-        existingShipment.setShippedDate(shipmentDTO.getShippedDate());
-        existingShipment.setDeliveredDate(shipmentDTO.getDeliveredDate());
+        existingShipment.setPlannedDate(plannedDate);
+        existingShipment.setShippedDate(shippedDate);
+        existingShipment.setDeliveredDate(deliveredDate);
 
         if (shipmentDTO.getSalesOrderId() != null) {
             SalesOrder salesOrder = salesOrderRepository.findById(shipmentDTO.getSalesOrderId())
@@ -184,4 +192,18 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .carrierId(shipment.getCarrier().getId())
                 .build();
     }
+
+    @Override
+    @Transactional
+    public ShipmentDTO updateShipmentStatus(UUID id, ShipmentStatus status) {
+        Shipment shipment = shipmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shipment not found"));
+
+        shipment.setStatus(status);
+        Shipment updatedShipment = shipmentRepository.save(shipment);
+
+        return convertToDTO(updatedShipment);
+    }
+
+
 }

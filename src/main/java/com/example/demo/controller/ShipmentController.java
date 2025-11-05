@@ -65,4 +65,16 @@ public class ShipmentController {
         List<ShipmentDTO> shipments = shipmentService.getShipmentsByStatus(status);
         return ResponseEntity.ok(shipments);
     }
+
+    @PostMapping("/updateStatus/{id}")
+    public ResponseEntity<ShipmentDTO> updateShipmentStatus(
+            @PathVariable UUID id,
+            @RequestBody ShipmentStatus status) {
+
+        ShipmentDTO updatedShipment = shipmentService.updateShipmentStatus(id, status);
+        return ResponseEntity.ok(updatedShipment);
+    }
+
+
+
 }

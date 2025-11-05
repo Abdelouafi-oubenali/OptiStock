@@ -147,30 +147,30 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         boolean updateStock = status == PurchaseOrderStatus.RECEIVED;
 
+        if (purchaseOrder.getStatus() == PurchaseOrderStatus.RECEIVED && updateStock) {
+            throw new RuntimeException("Cette commande a déjà été reçue, le stock est déjà mis à jour.");
+        }
+
         purchaseOrder.setStatus(status);
         PurchaseOrder updatedOrder = purchaseOrderRepository.save(purchaseOrder);
 
-
-        // Mise à jour du stock uniquement si status RECEIVED
         if (updateStock) {
-
-            if (purchaseOrder.getStatus() == PurchaseOrderStatus.RECEIVED) {
-                throw new RuntimeException("Cette commande a déjà été reçue, le stock est déjà mis à jour.");
-            }
-            List<PurchaseOrderLine> orderLines = purchaseOrder.getOrderLines(); // Récupérer les lignes de commande
+            List<PurchaseOrderLine> orderLines = purchaseOrder.getOrderLines();
             for (PurchaseOrderLine line : orderLines) {
-                Inventory inventory = inventoryRepository.findByProductId(line.getProduct().getId());
-                if (inventory == null) {
+                List<Inventory> inventories = inventoryRepository.findByProductId(line.getProduct().getId());
+                if (inventories == null || inventories.isEmpty()) {
                     throw new RuntimeException("Inventaire non trouvé pour le produit: " + line.getProduct().getId());
                 }
-
-                inventory.setQtyOnHand(inventory.getQtyOnHand() + line.getQuantity());
-                inventoryRepository.save(inventory);
+                for (Inventory inventory : inventories) {
+                    inventory.setQtyOnHand(inventory.getQtyOnHand() + line.getQuantity());
+                    inventoryRepository.save(inventory);
+                }
             }
         }
 
         return convertToDTO(updatedOrder);
     }
+
 
     @Override
     @Transactional

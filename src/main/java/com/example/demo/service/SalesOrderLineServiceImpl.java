@@ -33,19 +33,21 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
 
     public SalesOrderLineDTO createSalesOrderLine(SalesOrderLineDTO salesOrderLineDTO) {
         SalesOrder salesOrder = salesOrderRepository.findById(salesOrderLineDTO.getSales_order_id())
-                .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + salesOrderLineDTO.getSales_order_id()));
+                .orElseThrow(() -> new RuntimeException("Commande de vente introuvable avec l'id: " + salesOrderLineDTO.getSales_order_id()));
 
         Product product = productRepository.findById(salesOrderLineDTO.getProduct_id())
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + salesOrderLineDTO.getProduct_id()));
+                .orElseThrow(() -> new RuntimeException("Produit introuvable avec l'id: " + salesOrderLineDTO.getProduct_id()));
 
-        Inventory inventory = inventoryRepository.findByProductId(salesOrderLineDTO.getProduct_id());
+        List<Inventory> inventories = inventoryRepository.findByProductId(salesOrderLineDTO.getProduct_id());
 
-        if (inventory == null) {
-            throw new RuntimeException("Inventory not found for product id: " + salesOrderLineDTO.getProduct_id());
+        if (inventories == null || inventories.isEmpty()) {
+            throw new RuntimeException("Aucun inventaire trouvé pour le produit id: " + salesOrderLineDTO.getProduct_id());
         }
 
-        if (salesOrderLineDTO.getQuantity() > inventory.getQtyOnHand()) {
-            throw new RuntimeException("Insufficient stock for product id: " + salesOrderLineDTO.getProduct_id());
+        int totalQty = inventories.stream().mapToInt(Inventory::getQtyOnHand).sum();
+
+        if (salesOrderLineDTO.getQuantity() > totalQty) {
+            throw new RuntimeException("Stock insuffisant pour le produit id: " + salesOrderLineDTO.getProduct_id());
         }
 
         SalesOrderLine salesOrderLine = new SalesOrderLine();
@@ -57,13 +59,19 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
 
         SalesOrderLine savedLine = salesOrderLineRepository.save(salesOrderLine);
 
-        Integer updatedQuantity = inventory.getQtyOnHand() - salesOrderLineDTO.getQuantity();
-        inventory.setQtyOnHand(updatedQuantity);
-        inventoryRepository.save(inventory);
+        int remainingToDeduct = salesOrderLineDTO.getQuantity();
+
+        for (Inventory inv : inventories) {
+            if (remainingToDeduct <= 0) break;
+            int available = inv.getQtyOnHand();
+            int deduct = Math.min(available, remainingToDeduct);
+            inv.setQtyOnHand(available - deduct);
+            inventoryRepository.save(inv);
+            remainingToDeduct -= deduct;
+        }
 
         return convertToDTO(savedLine);
     }
-
 
     @Override
     public SalesOrderLineDTO getSalesOrderLineById(UUID id) {

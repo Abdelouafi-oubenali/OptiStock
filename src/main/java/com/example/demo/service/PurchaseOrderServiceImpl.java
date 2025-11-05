@@ -2,17 +2,9 @@ package com.example.demo.service.impl;
 
 import com.example.demo.dto.PurchaseOrderDTO;
 import com.example.demo.dto.PurchaseOrderLineDTO;
-import com.example.demo.entity.PurchaseOrder;
-import com.example.demo.entity.PurchaseOrderLine;
-import com.example.demo.entity.Supplier;
-import com.example.demo.entity.User;
-import com.example.demo.entity.Product;
+import com.example.demo.entity.*;
 import com.example.demo.enums.PurchaseOrderStatus;
-import com.example.demo.repository.PurchaseOrderRepository;
-import com.example.demo.repository.PurchaseOrderLineRepository;
-import com.example.demo.repository.SupplierRepository;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.repository.ProductRepository;
+import com.example.demo.repository.*;
 import com.example.demo.service.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,6 +24,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository ;
 
     @Override
     @Transactional
@@ -152,8 +145,30 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande d'achat non trouvée avec l'id: " + id));
 
+        boolean updateStock = status == PurchaseOrderStatus.RECEIVED;
+
         purchaseOrder.setStatus(status);
         PurchaseOrder updatedOrder = purchaseOrderRepository.save(purchaseOrder);
+
+
+        // Mise à jour du stock uniquement si status RECEIVED
+        if (updateStock) {
+
+            if (purchaseOrder.getStatus() == PurchaseOrderStatus.RECEIVED) {
+                throw new RuntimeException("Cette commande a déjà été reçue, le stock est déjà mis à jour.");
+            }
+            List<PurchaseOrderLine> orderLines = purchaseOrder.getOrderLines(); // Récupérer les lignes de commande
+            for (PurchaseOrderLine line : orderLines) {
+                Inventory inventory = inventoryRepository.findByProductId(line.getProduct().getId());
+                if (inventory == null) {
+                    throw new RuntimeException("Inventaire non trouvé pour le produit: " + line.getProduct().getId());
+                }
+
+                inventory.setQtyOnHand(inventory.getQtyOnHand() + line.getQuantity());
+                inventoryRepository.save(inventory);
+            }
+        }
+
         return convertToDTO(updatedOrder);
     }
 

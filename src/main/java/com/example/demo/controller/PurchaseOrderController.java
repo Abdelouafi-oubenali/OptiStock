@@ -69,7 +69,7 @@ public class PurchaseOrderController {
     }
 
     @PatchMapping("/{id}/status/{status}")
-    public ResponseEntity<PurchaseOrderDTO> updatePurchaseOrderStatus(@PathVariable UUID id, @PathVariable PurchaseOrderStatus status) {
+        public ResponseEntity<PurchaseOrderDTO> updatePurchaseOrderStatus(@PathVariable UUID id, @PathVariable PurchaseOrderStatus status) {
         PurchaseOrderDTO updatedOrder = purchaseOrderService.updatePurchaseOrderStatus(id, status);
         return ResponseEntity.ok(updatedOrder);
     }

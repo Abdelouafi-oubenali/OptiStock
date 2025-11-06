@@ -30,6 +30,6 @@ public class SalesOrderLineDTO {
     @Positive(message = "Le prix unitaire doit être positif")
     private BigDecimal unitPrice;
 
-    private boolean backorder = false;
+    private Integer backorder = 0 ;
 
 }

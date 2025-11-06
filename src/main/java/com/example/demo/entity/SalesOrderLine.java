@@ -29,7 +29,7 @@ public class SalesOrderLine {
     private BigDecimal unitPrice;
 
     @Column(nullable = false)
-    private boolean backorder = false;
+    private Integer backorder = 0;
 
     private LocalDateTime createdAt;
     private LocalDateTime reservedAt;

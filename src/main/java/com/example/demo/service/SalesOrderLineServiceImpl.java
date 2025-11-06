@@ -1,20 +1,19 @@
 package com.example.demo.service.impl;
 
-import com.example.demo.dto.InventoryDTO;
+import com.example.demo.dto.PurchaseOrderDTO;
+import com.example.demo.dto.PurchaseOrderLineDTO;
 import com.example.demo.dto.SalesOrderLineDTO;
-import com.example.demo.entity.Inventory;
-import com.example.demo.entity.SalesOrder;
-import com.example.demo.entity.SalesOrderLine;
-import com.example.demo.entity.Product;
-import com.example.demo.repository.InventoryRepository;
-import com.example.demo.repository.SalesOrderLineRepository;
-import com.example.demo.repository.SalesOrderRepository;
-import com.example.demo.repository.ProductRepository;
+import com.example.demo.entity.*;
+import com.example.demo.enums.PurchaseOrderStatus;
+import com.example.demo.repository.*;
+import com.example.demo.service.PurchaseOrderService;
 import com.example.demo.service.SalesOrderLineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,11 +25,15 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
     private final SalesOrderLineRepository salesOrderLineRepository;
     private final SalesOrderRepository salesOrderRepository;
     private final ProductRepository productRepository;
-    private final InventoryRepository inventoryRepository ;
+    private final InventoryRepository inventoryRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final PurchaseOrderLineRepository purchaseOrderLineRepository;
+    private final SupplierRepository supplierRepository;
+    private final UserRepository userRepository;
+    private final PurchaseOrderService purchaseOrderService;
 
     @Override
     @Transactional
-
     public SalesOrderLineDTO createSalesOrderLine(SalesOrderLineDTO salesOrderLineDTO) {
         SalesOrder salesOrder = salesOrderRepository.findById(salesOrderLineDTO.getSales_order_id())
                 .orElseThrow(() -> new RuntimeException("Commande de vente introuvable avec l'id: " + salesOrderLineDTO.getSales_order_id()));
@@ -39,15 +42,17 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
                 .orElseThrow(() -> new RuntimeException("Produit introuvable avec l'id: " + salesOrderLineDTO.getProduct_id()));
 
         List<Inventory> inventories = inventoryRepository.findByProductId(salesOrderLineDTO.getProduct_id());
-
         if (inventories == null || inventories.isEmpty()) {
             throw new RuntimeException("Aucun inventaire trouvé pour le produit id: " + salesOrderLineDTO.getProduct_id());
         }
 
         int totalQty = inventories.stream().mapToInt(Inventory::getQtyOnHand).sum();
+        int orderedQty = salesOrderLineDTO.getQuantity();
+        int backorderQty = 0;
 
-        if (salesOrderLineDTO.getQuantity() > totalQty) {
-            throw new RuntimeException("Stock insuffisant pour le produit id: " + salesOrderLineDTO.getProduct_id());
+        if (orderedQty > totalQty) {
+            backorderQty = orderedQty - totalQty;
+            orderedQty = totalQty;
         }
 
         SalesOrderLine salesOrderLine = new SalesOrderLine();
@@ -55,12 +60,11 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
         salesOrderLine.setProduct(product);
         salesOrderLine.setQuantity(salesOrderLineDTO.getQuantity());
         salesOrderLine.setUnitPrice(salesOrderLineDTO.getUnitPrice());
-        salesOrderLine.setBackorder(salesOrderLineDTO.isBackorder());
+        salesOrderLine.setBackorder(backorderQty);
 
         SalesOrderLine savedLine = salesOrderLineRepository.save(salesOrderLine);
 
-        int remainingToDeduct = salesOrderLineDTO.getQuantity();
-
+        int remainingToDeduct = orderedQty;
         for (Inventory inv : inventories) {
             if (remainingToDeduct <= 0) break;
             int available = inv.getQtyOnHand();
@@ -70,7 +74,53 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
             remainingToDeduct -= deduct;
         }
 
+        if (backorderQty > 0) {
+            createAutomaticPurchaseOrder(product, backorderQty);
+        }
+
         return convertToDTO(savedLine);
+    }
+
+    private void createAutomaticPurchaseOrder(Product product, int backorderQty) {
+        try {
+            List<Supplier> suppliers = supplierRepository.findAll();
+            if (suppliers.isEmpty()) {
+                throw new RuntimeException("Aucun fournisseur trouvé dans la base de données");
+            }
+            Supplier supplier = suppliers.get(0);
+
+            List<User> users = userRepository.findAll();
+            if (users.isEmpty()) {
+                throw new RuntimeException("Aucun utilisateur trouvé dans la base de données");
+            }
+            User createdBy = users.get(0);
+
+            PurchaseOrder purchaseOrder = new PurchaseOrder();
+            purchaseOrder.setSupplier(supplier);
+            purchaseOrder.setCreatedBy(createdBy);
+            purchaseOrder.setStatus(PurchaseOrderStatus.CREATED);
+            purchaseOrder.setExpectedDelivery(LocalDateTime.now().plusDays(7));
+
+            PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
+
+            PurchaseOrderLine orderLine = new PurchaseOrderLine();
+            orderLine.setPurchaseOrder(savedOrder);
+            orderLine.setProduct(product);
+            orderLine.setQuantity(backorderQty);
+
+            BigDecimal unitPrice = determinePurchasePrice(product);
+            orderLine.setUnitPrice(unitPrice);
+
+            purchaseOrderLineRepository.save(orderLine);
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la création automatique du PurchaseOrder: " + e.getMessage());
+        }
+    }
+
+    private BigDecimal determinePurchasePrice(Product product) {
+
+        return new BigDecimal("100.00");
     }
 
     @Override
@@ -110,12 +160,10 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
         SalesOrderLine existingLine = salesOrderLineRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("SalesOrderLine not found with id: " + id));
 
-        // Mettre à jour les champs de base
         existingLine.setQuantity(salesOrderLineDTO.getQuantity());
         existingLine.setUnitPrice(salesOrderLineDTO.getUnitPrice());
-        existingLine.setBackorder(salesOrderLineDTO.isBackorder());
+        existingLine.setBackorder(salesOrderLineDTO.getBackorder());
 
-        // Mettre à jour les relations si fournies
         if (salesOrderLineDTO.getSales_order_id() != null) {
             SalesOrder salesOrder = salesOrderRepository.findById(salesOrderLineDTO.getSales_order_id())
                     .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + salesOrderLineDTO.getSales_order_id()));
@@ -154,7 +202,7 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
         dto.setProduct_id(salesOrderLine.getProduct().getId());
         dto.setQuantity(salesOrderLine.getQuantity());
         dto.setUnitPrice(salesOrderLine.getUnitPrice());
-        dto.setBackorder(salesOrderLine.isBackorder());
+        dto.setBackorder(salesOrderLine.getBackorder());
         return dto;
     }
 }

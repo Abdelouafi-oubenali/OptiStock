@@ -22,6 +22,9 @@ public class PurchaseOrderLineDTO {
     @NotNull(message = "La quantité est obligatoire")
     private Integer quantity;
 
+    private Integer backorder = 0 ;
+
+
     @NotNull(message = "Le prix unitaire est obligatoire")
     private BigDecimal unitPrice;
 

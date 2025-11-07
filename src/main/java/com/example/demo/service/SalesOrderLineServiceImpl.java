@@ -107,6 +107,7 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
             orderLine.setPurchaseOrder(savedOrder);
             orderLine.setProduct(product);
             orderLine.setQuantity(backorderQty);
+            orderLine.setBackorder(backorderQty) ;
 
             BigDecimal unitPrice = determinePurchasePrice(product);
             orderLine.setUnitPrice(unitPrice);

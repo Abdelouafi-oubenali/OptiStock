@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
+@Table(name = "purchase_order")
 @Data
 public class PurchaseOrder {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // RELATION AVEC SUPPLIER
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
@@ -30,17 +30,24 @@ public class PurchaseOrder {
     private User approvedBy;
 
     @Enumerated(EnumType.STRING)
-    private PurchaseOrderStatus status;
+    @Column(nullable = false)
+    private PurchaseOrderStatus status = PurchaseOrderStatus.DRAFT; // AJOUT: valeur par défaut
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+
     private LocalDateTime expectedDelivery;
 
     @OneToMany(mappedBy = "purchaseOrder", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<PurchaseOrderLine> orderLines;
 
-    // Méthode de pré-persist pour la date de création
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = PurchaseOrderStatus.DRAFT; // Assurer que le statut n'est jamais null
+        }
     }
 }

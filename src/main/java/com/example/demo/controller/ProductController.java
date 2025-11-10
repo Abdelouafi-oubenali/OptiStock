@@ -55,4 +55,11 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<Void> UpdateStatus(@PathVariable UUID id) {
+        productService.updateStatusProduct(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

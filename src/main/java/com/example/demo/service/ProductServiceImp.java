@@ -92,33 +92,23 @@ public class ProductServiceImp implements ProductService {
     }
 
     @Override
-    public void updateStatusProduct (UUID uuid)
-    {
-        Optional<Product> product = productRepository.findById(uuid) ;
-        List<Inventory> productStock = inventoryRepository.findByProductId((uuid)) ;
-
-        String newStatus = "Hidine" ;
-
-        //virfy invintory
-
-       if(productStock == null)
-       {
-           product.setStatus(newStatus) ;
-       }else {
-           new RuntimeException("product et dija resrver imposible de checnge ce status") ;
-       }
-
-        //virify status
-        if(product.getStatus != "CREATED" || product.getStatus != "RESERVED")
-        {
-             new RuntimeException("product et dija resrver imposible de checnge ce status") ;
+    public void updateStatusProduct(UUID uuid) {
+        Product product = productRepository.findById(uuid)
+                .orElseThrow(() -> new RuntimeException("Produit non trouvé"));
+        List<Inventory> productStock = inventoryRepository.findByProductId(uuid);
+        String newStatus = "Hidine";
+        if (productStock == null || productStock.isEmpty()) {
+            if (product.getStatus().equals("CREATED") || product.getStatus().equals("RESERVED")) {
+                product.setStatus(newStatus);
+                productRepository.save(product);
+            } else {
+                throw new RuntimeException("Le produit est déjà réservé, impossible de changer ce status");
+            }
         } else {
-            product.setStatus(newStatus) ;
+            throw new RuntimeException("Le produit est déjà réservé, impossible de changer ce status");
         }
-
-       Product product1=  productRepository.save(product) ;
-
     }
+
 
     private Product toEntity(ProductDTO dto) {
         return Product.builder()

@@ -31,6 +31,9 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Column(nullable = true)
+    private String status ;
+
     // Relation avec Inventory
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Inventory> inventories;
@@ -42,4 +45,6 @@ public class Product {
     // RELATION: Lignes de commande de vente pour ce produit
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     private List<SalesOrderLine> salesOrderLines;
+
+
 }

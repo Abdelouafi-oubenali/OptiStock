@@ -1,12 +1,15 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ProductDTO;
+import com.example.demo.entity.Inventory;
 import com.example.demo.entity.Product;
+import com.example.demo.repository.InventoryRepository;
 import com.example.demo.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -15,6 +18,7 @@ import java.util.stream.Collectors;
 public class ProductServiceImp implements ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository ;
 
     @Override
     public ProductDTO createProduct(ProductDTO productDTO) {
@@ -86,6 +90,25 @@ public class ProductServiceImp implements ProductService {
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec le SKU: " + sku));
         return toDto(product);
     }
+
+    @Override
+    public void updateStatusProduct(UUID uuid) {
+        Product product = productRepository.findById(uuid)
+                .orElseThrow(() -> new RuntimeException("Produit non trouvé"));
+        List<Inventory> productStock = inventoryRepository.findByProductId(uuid);
+        String newStatus = "Hidine";
+        if (productStock == null || productStock.isEmpty()) {
+            if (product.getStatus().equals("CREATED") || product.getStatus().equals("RESERVED")) {
+                product.setStatus(newStatus);
+                productRepository.save(product);
+            } else {
+                throw new RuntimeException("Le produit est déjà réservé, impossible de changer ce status");
+            }
+        } else {
+            throw new RuntimeException("Le produit est déjà réservé, impossible de changer ce status");
+        }
+    }
+
 
     private Product toEntity(ProductDTO dto) {
         return Product.builder()

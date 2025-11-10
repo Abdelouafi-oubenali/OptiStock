@@ -45,4 +45,6 @@ public class Product {
     // RELATION: Lignes de commande de vente pour ce produit
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     private List<SalesOrderLine> salesOrderLines;
+
+
 }

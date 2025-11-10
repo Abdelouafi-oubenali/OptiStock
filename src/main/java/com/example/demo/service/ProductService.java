@@ -12,4 +12,5 @@ public interface ProductService {
     ProductDTO updateProduct(UUID id, ProductDTO productDTO);
     void deleteProduct(UUID id);
     ProductDTO getProductBySku(String sku);
+    void updateStatusProduct(UUID uuid);
 }

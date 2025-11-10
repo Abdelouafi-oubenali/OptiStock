@@ -1,12 +1,15 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ProductDTO;
+import com.example.demo.entity.Inventory;
 import com.example.demo.entity.Product;
+import com.example.demo.repository.InventoryRepository;
 import com.example.demo.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -15,6 +18,7 @@ import java.util.stream.Collectors;
 public class ProductServiceImp implements ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository ;
 
     @Override
     public ProductDTO createProduct(ProductDTO productDTO) {
@@ -85,6 +89,35 @@ public class ProductServiceImp implements ProductService {
         Product product = productRepository.findBySku(sku)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec le SKU: " + sku));
         return toDto(product);
+    }
+
+    @Override
+    public void updateStatusProduct (UUID uuid)
+    {
+        Optional<Product> product = productRepository.findById(uuid) ;
+        List<Inventory> productStock = inventoryRepository.findByProductId((uuid)) ;
+
+        String newStatus = "Hidine" ;
+
+        //virfy invintory
+
+       if(productStock == null)
+       {
+           product.setStatus(newStatus) ;
+       }else {
+           new RuntimeException("product et dija resrver imposible de checnge ce status") ;
+       }
+
+        //virify status
+        if(product.getStatus != "CREATED" || product.getStatus != "RESERVED")
+        {
+             new RuntimeException("product et dija resrver imposible de checnge ce status") ;
+        } else {
+            product.setStatus(newStatus) ;
+        }
+
+       Product product1=  productRepository.save(product) ;
+
     }
 
     private Product toEntity(ProductDTO dto) {

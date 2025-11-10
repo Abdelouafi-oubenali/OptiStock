@@ -29,4 +29,6 @@ public class ProductDTO {
     @NotNull(message = "Le prix est requis")
     @Positive(message = "Le prix doit être positif")
     private BigDecimal price;
+
+    private String  status ;
 }

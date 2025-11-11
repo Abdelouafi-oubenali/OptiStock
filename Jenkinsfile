@@ -9,7 +9,9 @@ pipeline {
     stages {
         stage('get images') {
             steps {
-                git branch: 'main', url: 'https://github.com/ton-repo/gestion-stock.git'
+                git branch: 'main',
+                 url: 'https://github.com/Abdelouafi-oubenali/OptiStock',
+                credentialsId: 'github-ssh'
             }
         }
 

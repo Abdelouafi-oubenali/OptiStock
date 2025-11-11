@@ -204,6 +204,6 @@ public class SalesOrderLineServiceImpl implements SalesOrderLineService {
         dto.setQuantity(salesOrderLine.getQuantity());
         dto.setUnitPrice(salesOrderLine.getUnitPrice());
         dto.setBackorder(salesOrderLine.getBackorder());
-        return dto;
+        return dto; //mabstract .
     }
 }

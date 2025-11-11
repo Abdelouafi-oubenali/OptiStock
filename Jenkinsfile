@@ -9,13 +9,9 @@ pipeline {
     stages {
         stage('get images') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Abdelouafi-oubenali/OptiStock',
-                        credentialsId: 'github-token'
-                    ]]
-                ])
+                git branch: 'main',
+                 url: 'https://github.com/Abdelouafi-oubenali/OptiStock',
+                credentialsId: 'github-ssh'
             }
         }
 
@@ -37,7 +33,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube') {
+        stage(' SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube-Server') {
                     sh "mvn sonar:sonar -Dsonar.projectKey=gestion-stock"
@@ -53,13 +49,13 @@ pipeline {
             }
         }
 
-        stage('create Docker') {
+        stage(' create Docker') {
             steps {
                 sh 'docker build -t gestion-stock:latest .'
             }
         }
 
-        stage('run containers') {
+        stage(' run continers') {
             steps {
                 sh 'docker-compose up -d'
             }
@@ -68,10 +64,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Le code a été exécuté avec succès !'
+            echo 'le code run avec sucise'
         }
         failure {
-            echo '❌ Erreur pendant l’exécution du pipeline.'
+            echo 'errore dons exiction '
         }
     }
 }

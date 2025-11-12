@@ -6,7 +6,7 @@ pipeline {
     }
 
     tools {
-        jdk 'jdk-21'  // Mis à jour pour être compatible avec Java 21
+        jdk 'jdk-21'
         maven 'maven-3.8.5'
     }
 

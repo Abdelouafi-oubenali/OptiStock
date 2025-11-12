@@ -5,8 +5,9 @@ import com.example.demo.entity.Product;
 import com.example.demo.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -14,7 +15,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 class ProductServiceImpTest {
 
     @Mock
@@ -28,7 +29,6 @@ class ProductServiceImpTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
 
         UUID id = UUID.randomUUID();
 
@@ -46,7 +46,7 @@ class ProductServiceImpTest {
                 .description("High performance laptop")
                 .sku("SKU123")
                 .price(new BigDecimal("1200.0"))
-                .build();   
+                .build();
     }
 
     @Test
@@ -58,14 +58,20 @@ class ProductServiceImpTest {
 
         assertNotNull(result);
         assertEquals("Laptop Dell", result.getName());
+        assertEquals("SKU123", result.getSku());
         verify(productRepository, times(1)).save(any(Product.class));
+        verify(productRepository, times(1)).existsBySku("SKU123");
     }
 
     @Test
     void testCreateProduct_DuplicateSku_ThrowsException() {
         when(productRepository.existsBySku("SKU123")).thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> productService.createProduct(productDTO));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> productService.createProduct(productDTO));
+
+        assertTrue(exception.getMessage().contains("SKU"));
+        verify(productRepository, never()).save(any(Product.class));
     }
 
     @Test
@@ -74,14 +80,22 @@ class ProductServiceImpTest {
 
         ProductDTO result = productService.getProductById(product.getId());
 
-        assertEquals(product.getName(), result.getName());
+        assertNotNull(result);
+        assertEquals("Laptop Dell", result.getName());
+        assertEquals("SKU123", result.getSku());
+        verify(productRepository, times(1)).findById(product.getId());
     }
 
     @Test
     void testGetProductById_NotFound_ThrowsException() {
-        when(productRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+        UUID randomId = UUID.randomUUID();
+        when(productRepository.findById(randomId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> productService.getProductById(UUID.randomUUID()));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> productService.getProductById(randomId));
+
+        assertTrue(exception.getMessage().contains("non trouvé"));
+        verify(productRepository, times(1)).findById(randomId);
     }
 
     @Test
@@ -90,8 +104,10 @@ class ProductServiceImpTest {
 
         List<ProductDTO> result = productService.getAllProducts();
 
+        assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("Laptop Dell", result.get(0).getName());
+        verify(productRepository, times(1)).findAll();
     }
 
     @Test
@@ -100,13 +116,20 @@ class ProductServiceImpTest {
 
         ProductDTO result = productService.getProductBySku("SKU123");
 
+        assertNotNull(result);
         assertEquals("Laptop Dell", result.getName());
+        assertEquals("SKU123", result.getSku());
+        verify(productRepository, times(1)).findBySku("SKU123");
     }
 
     @Test
     void testGetProductBySku_NotFound() {
-        when(productRepository.findBySku(anyString())).thenReturn(Optional.empty());
+        when(productRepository.findBySku("UNKNOWN")).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> productService.getProductBySku("UNKNOWN"));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> productService.getProductBySku("UNKNOWN"));
+
+        assertTrue(exception.getMessage().contains("non trouvé"));
+        verify(productRepository, times(1)).findBySku("UNKNOWN");
     }
 }

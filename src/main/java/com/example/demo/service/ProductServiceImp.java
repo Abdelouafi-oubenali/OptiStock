@@ -121,6 +121,9 @@ public class ProductServiceImp implements ProductService {
     }
 
     private ProductDTO toDto(Product entity) {
+        if (entity == null) {
+            return null ;
+        }
         return ProductDTO.builder()
                 .id(entity.getId())
                 .name(entity.getName())

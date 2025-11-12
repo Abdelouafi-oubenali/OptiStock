@@ -1,4 +1,4 @@
-package com.example.demo.service.impl;
+package com.example.demo.service;
 
 import com.example.demo.dto.SalesOrderLineDTO;
 import com.example.demo.entity.*;
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
+import com.example.demo.service.impl.SalesOrderLineServiceImpl;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;

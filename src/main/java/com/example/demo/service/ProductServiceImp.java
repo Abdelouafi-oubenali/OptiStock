@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class ProductServiceImp implements ProductService {
 
     private final ProductRepository productRepository;
-    private final InventoryRepository inventoryRepository ;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     public ProductDTO createProduct(ProductDTO productDTO) {
@@ -44,6 +44,7 @@ public class ProductServiceImp implements ProductService {
         return productRepository.findAll()
                 .stream()
                 .map(this::toDto)
+                .filter(Objects::nonNull) // Filtrer les valeurs null
                 .collect(Collectors.toList());
     }
 
@@ -52,11 +53,13 @@ public class ProductServiceImp implements ProductService {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + id));
 
+        // Vérifier si le SKU a changé et s'il existe déjà
         if (!existingProduct.getSku().equals(productDTO.getSku()) &&
                 productRepository.existsBySku(productDTO.getSku())) {
             throw new RuntimeException("Un autre produit avec ce SKU existe déjà: " + productDTO.getSku());
         }
 
+        // Mettre à jour les propriétés
         existingProduct.setName(productDTO.getName());
         existingProduct.setDescription(productDTO.getDescription());
         existingProduct.setSku(productDTO.getSku());
@@ -71,13 +74,14 @@ public class ProductServiceImp implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + id));
 
-        if (!product.getInventories().isEmpty()) {
+        // Vérifier les relations avant suppression
+        if (product.getInventories() != null && !product.getInventories().isEmpty()) {
             throw new RuntimeException("Impossible de supprimer le produit: il existe des inventaires associés");
         }
-        if (!product.getPurchaseOrderLines().isEmpty()) {
+        if (product.getPurchaseOrderLines() != null && !product.getPurchaseOrderLines().isEmpty()) {
             throw new RuntimeException("Impossible de supprimer le produit: il existe des lignes de commande d'achat associées");
         }
-        if (!product.getSalesOrderLines().isEmpty()) {
+        if (product.getSalesOrderLines() != null && !product.getSalesOrderLines().isEmpty()) {
             throw new RuntimeException("Impossible de supprimer le produit: il existe des lignes de commande de vente associées");
         }
 
@@ -95,10 +99,12 @@ public class ProductServiceImp implements ProductService {
     public void updateStatusProduct(UUID uuid) {
         Product product = productRepository.findById(uuid)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé"));
+
         List<Inventory> productStock = inventoryRepository.findByProductId(uuid);
-        String newStatus = "Hidine";
+        String newStatus = "HIDINE"; 
+
         if (productStock == null || productStock.isEmpty()) {
-            if (product.getStatus().equals("CREATED") || product.getStatus().equals("RESERVED")) {
+            if ("CREATED".equals(product.getStatus()) || "RESERVED".equals(product.getStatus())) {
                 product.setStatus(newStatus);
                 productRepository.save(product);
             } else {
@@ -109,8 +115,10 @@ public class ProductServiceImp implements ProductService {
         }
     }
 
-
     private Product toEntity(ProductDTO dto) {
+        if (dto == null) {
+            return null;
+        }
         return Product.builder()
                 .id(dto.getId())
                 .name(dto.getName())
@@ -122,7 +130,7 @@ public class ProductServiceImp implements ProductService {
 
     private ProductDTO toDto(Product entity) {
         if (entity == null) {
-            return null ;
+            throw new IllegalArgumentException("Product entity cannot be null");
         }
         return ProductDTO.builder()
                 .id(entity.getId())

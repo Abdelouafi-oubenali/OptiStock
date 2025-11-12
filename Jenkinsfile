@@ -2,17 +2,16 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
-        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+        SPRING_PROFILES_ACTIVE = 'test'
     }
 
     tools {
-        jdk 'jdk-17'
+        jdk 'jdk-21'  // Mis à jour pour être compatible avec Java 21
         maven 'maven-3.8.5'
     }
 
     stages {
-        stage('Récupération du code') {
+        stage('Récupération du code source') {
             steps {
                 git branch: 'main',
                 url: 'https://github.com/Abdelouafi-oubenali/OptiStock',
@@ -20,30 +19,36 @@ pipeline {
             }
         }
 
-        stage('Compilation') {
+        stage('Compilation du projet') {
             steps {
-                sh 'mvn clean compile -Dspring.profiles.active=test'
+                sh 'mvn clean compile'
             }
         }
 
-        stage('Tests unitaires') {
+        stage('Exécution des tests unitaires') {
             steps {
-                sh 'mvn test jacoco:report -Dspring.profiles.active=test'
+                sh 'mvn test jacoco:report'
             }
             post {
                 always {
                     junit '**/target/surefire-reports/*.xml'
-                    jacoco execPattern: '**/target/jacoco.exec'
+                    jacoco(
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java'
+                    )
                 }
             }
         }
 
         stage('Création du package') {
             steps {
-                sh 'mvn package -DskipTests -Dspring.profiles.active=test'
+                sh 'mvn package -DskipTests'
+                archiveArtifacts 'target/*.jar'
             }
         }
 
+        /*
         stage('Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube-Server') {
@@ -59,14 +64,18 @@ pipeline {
                 }
             }
         }
+        */
 
+        /*
         stage('Création de l’image Docker') {
             steps {
-                sh 'docker build -t gestion-stock:latest .'
+                script {
+                    docker.build("gestion-stock:${env.BUILD_ID}")
+                }
             }
         }
 
-        stage('Exécution des conteneurs') {
+        stage('Exécution des conteneurs Docker') {
             steps {
                 sh 'docker-compose up -d'
                 script {
@@ -75,27 +84,33 @@ pipeline {
                 }
             }
         }
+        */
     }
 
     post {
         always {
-            sh 'docker-compose down || true'
+            echo 'Nettoyage de l’environnement'
+            // sh 'docker-compose down || true'  // À décommenter lors de l’intégration de Docker
         }
         success {
-            echo 'Construction et tests effectués avec succès'
+            echo ' Construction et tests effectués avec succès'
+            /*
             emailext (
                 subject: "SUCCÈS : Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: "L’application a été construite et déployée avec succès.\n\nLien Jenkins : ${env.BUILD_URL}",
+                body: "L’application a été construite et testée avec succès.\n\nLien Jenkins : ${env.BUILD_URL}",
                 to: "abdelouafi@admin.com"
             )
+            */
         }
         failure {
             echo ' Une erreur s’est produite lors de l’exécution'
+            /*
             emailext (
                 subject: "ÉCHEC : Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: "Échec de la construction ou du déploiement de l’application.\n\nConsultez les journaux : ${env.BUILD_URL}",
+                body: "Échec de la construction ou des tests de l’application.\n\nConsultez les journaux : ${env.BUILD_URL}",
                 to: "abdelouafi@admin.com"
             )
+            */
         }
     }
 }

@@ -11,7 +11,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - demo_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d stock_db"]
       interval: 10s
@@ -58,9 +58,8 @@ services:
       - "8082:8080"
       - "50000:50000"
     volumes:
-      - jenkins_home:/var/jenkins_home
+      - demo_jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./jenkins-data:/var/jenkins_home
     environment:
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
 
@@ -72,12 +71,11 @@ services:
     environment:
       - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
     volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_logs:/opt/sonarqube/logs
+      - demo_sonarqube_data:/opt/sonarqube/data
+      - demo_sonarqube_logs:/opt/sonarqube/logs
 
 volumes:
-  postgres_data:
-  jenkins_home:
-  sonarqube_data:
-  sonarqube_logs:
-  jenkins-data:
+  demo_postgres_data:
+  demo_jenkins_home:
+  demo_sonarqube_data:
+  demo_sonarqube_logs:

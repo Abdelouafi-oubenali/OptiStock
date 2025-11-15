@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         SPRING_PROFILES_ACTIVE = 'test'
-    }Impossible de supprimer
+    }
 
 
     tools {

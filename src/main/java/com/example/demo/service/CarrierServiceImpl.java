@@ -3,6 +3,7 @@ package com.example.demo.service.impl;
 import com.example.demo.dto.CarrierDTO;
 import com.example.demo.entity.Carrier;
 import com.example.demo.enums.CarrierStatus;
+import com.example.demo.mapper.CarrierMapper;
 import com.example.demo.repository.CarrierRepository;
 import com.example.demo.service.CarrierService;
 import lombok.RequiredArgsConstructor;
@@ -19,49 +20,46 @@ public class CarrierServiceImpl implements CarrierService {
 
     private final CarrierRepository carrierRepository;
 
+    private final CarrierMapper carrierMapper = CarrierMapper.INSTANCE;
+
     @Override
     @Transactional
     public CarrierDTO createCarrier(CarrierDTO carrierDTO) {
-        // Vérifier si le nom existe déjà
         if (carrierRepository.existsByName(carrierDTO.getName())) {
             throw new RuntimeException("Un transporteur avec le nom '" + carrierDTO.getName() + "' existe déjà");
         }
 
-        Carrier carrier = new Carrier();
-        carrier.setName(carrierDTO.getName());
-        carrier.setContactEmail(carrierDTO.getContactEmail());
-        carrier.setContactPhone(carrierDTO.getContactPhone());
-        carrier.setBaseShippingRate(carrierDTO.getBaseShippingRate());
-        carrier.setMaxDailyCapacity(carrierDTO.getMaxDailyCapacity());
-        carrier.setCurrentDailyShipments(carrierDTO.getCurrentDailyShipments() != null ?
-                carrierDTO.getCurrentDailyShipments() : 0);
-        carrier.setCutOffTime(carrierDTO.getCutOffTime());
-        carrier.setStatus(carrierDTO.getStatus() != null ?
-                carrierDTO.getStatus() : CarrierStatus.ACTIVE);
+        Carrier carrier = carrierMapper.toEntity(carrierDTO);
+        if (carrier.getCurrentDailyShipments() == null) {
+            carrier.setCurrentDailyShipments(0);
+        }
+        if (carrier.getStatus() == null) {
+            carrier.setStatus(CarrierStatus.ACTIVE);
+        }
 
         Carrier savedCarrier = carrierRepository.save(carrier);
-        return convertToDTO(savedCarrier);
+        return carrierMapper.toDTO(savedCarrier);
     }
 
     @Override
     public CarrierDTO getCarrierById(UUID id) {
         Carrier carrier = carrierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec l'id: " + id));
-        return convertToDTO(carrier);
+        return carrierMapper.toDTO(carrier);
     }
 
     @Override
     public CarrierDTO getCarrierByName(String name) {
         Carrier carrier = carrierRepository.findByName(name)
                 .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec le nom: " + name));
-        return convertToDTO(carrier);
+        return carrierMapper.toDTO(carrier);
     }
 
     @Override
     public List<CarrierDTO> getAllCarriers() {
         return carrierRepository.findAll()
                 .stream()
-                .map(this::convertToDTO)
+                .map(carrierMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -69,35 +67,25 @@ public class CarrierServiceImpl implements CarrierService {
     public List<CarrierDTO> getCarriersByStatus(CarrierStatus status) {
         return carrierRepository.findByStatus(status)
                 .stream()
-                .map(this::convertToDTO)
+                .map(carrierMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<CarrierDTO> getActiveCarriers() {
-        return carrierRepository.findByStatus(CarrierStatus.ACTIVE)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        return getCarriersByStatus(CarrierStatus.ACTIVE);
     }
 
     @Override
     @Transactional
     public void deactivateCarrier(UUID id) {
-        Carrier carrier = carrierRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec l'id: " + id));
-        carrier.setStatus(CarrierStatus.INACTIVE);
-        carrierRepository.save(carrier);
+        updateCarrierStatus(id, CarrierStatus.INACTIVE);
     }
 
     @Override
     @Transactional
     public void activateCarrier(UUID id) {
-        // AJOUTER CETTE IMPLÉMENTATION
-        Carrier carrier = carrierRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec l'id: " + id));
-        carrier.setStatus(CarrierStatus.ACTIVE);
-        carrierRepository.save(carrier);
+        updateCarrierStatus(id, CarrierStatus.ACTIVE);
     }
 
     @Override
@@ -106,7 +94,6 @@ public class CarrierServiceImpl implements CarrierService {
         Carrier existingCarrier = carrierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec l'id: " + id));
 
-        // Vérifier l'unicité du nom (sauf pour l'entité actuelle)
         if (!existingCarrier.getName().equals(carrierDTO.getName()) &&
                 carrierRepository.existsByName(carrierDTO.getName())) {
             throw new RuntimeException("Un transporteur avec le nom '" + carrierDTO.getName() + "' existe déjà");
@@ -129,7 +116,7 @@ public class CarrierServiceImpl implements CarrierService {
         }
 
         Carrier updatedCarrier = carrierRepository.save(existingCarrier);
-        return convertToDTO(updatedCarrier);
+        return carrierMapper.toDTO(updatedCarrier);
     }
 
     @Override
@@ -147,7 +134,7 @@ public class CarrierServiceImpl implements CarrierService {
                 .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec l'id: " + id));
         carrier.setStatus(status);
         Carrier updatedCarrier = carrierRepository.save(carrier);
-        return convertToDTO(updatedCarrier);
+        return carrierMapper.toDTO(updatedCarrier);
     }
 
     @Override
@@ -162,7 +149,7 @@ public class CarrierServiceImpl implements CarrierService {
 
         carrier.setCurrentDailyShipments(carrier.getCurrentDailyShipments() + 1);
         Carrier updatedCarrier = carrierRepository.save(carrier);
-        return convertToDTO(updatedCarrier);
+        return carrierMapper.toDTO(updatedCarrier);
     }
 
     @Override
@@ -172,20 +159,6 @@ public class CarrierServiceImpl implements CarrierService {
                 .orElseThrow(() -> new RuntimeException("Transporteur non trouvé avec l'id: " + id));
         carrier.setCurrentDailyShipments(0);
         Carrier updatedCarrier = carrierRepository.save(carrier);
-        return convertToDTO(updatedCarrier);
-    }
-
-    private CarrierDTO convertToDTO(Carrier carrier) {
-        return CarrierDTO.builder()
-                .id(carrier.getId())
-                .name(carrier.getName())
-                .contactEmail(carrier.getContactEmail())
-                .contactPhone(carrier.getContactPhone())
-                .baseShippingRate(carrier.getBaseShippingRate())
-                .maxDailyCapacity(carrier.getMaxDailyCapacity())
-                .currentDailyShipments(carrier.getCurrentDailyShipments())
-                .cutOffTime(carrier.getCutOffTime())
-                .status(carrier.getStatus())
-                .build();
+        return carrierMapper.toDTO(updatedCarrier);
     }
 }

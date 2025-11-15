@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.WarehouseDTO;
 import com.example.demo.entity.Warehouse;
+import com.example.demo.mapper.WarehouseMapper;
 import com.example.demo.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,48 +13,47 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class WarehouseServiceImp implements  WarehouseService{
+public class WarehouseServiceImp implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
+    private final WarehouseMapper mapper = WarehouseMapper.INSTANCE;
 
-    public WarehouseDTO createWarehouse(WarehouseDTO warehouseDTO) {
-        if (warehouseRepository.existsByName(warehouseDTO.getName())) {
+    public WarehouseDTO createWarehouse(WarehouseDTO dto) {
+        if (warehouseRepository.existsByName(dto.getName())) {
             throw new RuntimeException("Un entrepôt avec ce nom existe déjà");
         }
-
-        Warehouse warehouse = toEntity(warehouseDTO);
+        Warehouse warehouse = mapper.toEntity(dto);
         Warehouse saved = warehouseRepository.save(warehouse);
-        return toDTO(saved);
+        return mapper.toDTO(saved);
     }
 
     public List<WarehouseDTO> getAllWarehouses() {
         return warehouseRepository.findAll()
                 .stream()
-                .map(this::toDTO)
+                .map(mapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     public WarehouseDTO getWarehouseById(UUID id) {
         Warehouse warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Entrepôt non trouvé avec l'ID: " + id));
-        return toDTO(warehouse);
+        return mapper.toDTO(warehouse);
     }
 
-    public WarehouseDTO updateWarehouse(UUID id, WarehouseDTO warehouseDTO) {
-        Warehouse existingWarehouse = warehouseRepository.findById(id)
+    public WarehouseDTO updateWarehouse(UUID id, WarehouseDTO dto) {
+        Warehouse existing = warehouseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Entrepôt non trouvé avec l'ID: " + id));
 
-        if (!existingWarehouse.getName().equals(warehouseDTO.getName()) &&
-                warehouseRepository.existsByName(warehouseDTO.getName())) {
+        if (!existing.getName().equals(dto.getName()) && warehouseRepository.existsByName(dto.getName())) {
             throw new RuntimeException("Un entrepôt avec ce nom existe déjà");
         }
 
-        existingWarehouse.setName(warehouseDTO.getName());
-        existingWarehouse.setVille(warehouseDTO.getVille());
-        existingWarehouse.setActive(warehouseDTO.isActive());
+        existing.setName(dto.getName());
+        existing.setVille(dto.getVille());
+        existing.setActive(dto.isActive());
 
-        Warehouse updated = warehouseRepository.save(existingWarehouse);
-        return toDTO(updated);
+        Warehouse updated = warehouseRepository.save(existing);
+        return mapper.toDTO(updated);
     }
 
     public void deleteWarehouse(UUID id) {
@@ -65,26 +65,7 @@ public class WarehouseServiceImp implements  WarehouseService{
     public List<WarehouseDTO> getActiveWarehouses() {
         return warehouseRepository.findByActiveTrue()
                 .stream()
-                .map(this::toDTO)
+                .map(mapper::toDTO)
                 .collect(Collectors.toList());
-    }
-
-    // Méthodes de conversion
-    private Warehouse toEntity(WarehouseDTO dto) {
-        Warehouse warehouse = new Warehouse();
-        warehouse.setId(dto.getId());
-        warehouse.setName(dto.getName());
-        warehouse.setVille(dto.getVille());
-        warehouse.setActive(dto.isActive());
-        return warehouse;
-    }
-
-    private WarehouseDTO toDTO(Warehouse warehouse) {
-        WarehouseDTO dto = new WarehouseDTO();
-        dto.setId(warehouse.getId());
-        dto.setName(warehouse.getName());
-        dto.setVille(warehouse.getVille());
-        dto.setActive(warehouse.isActive());
-        return dto;
     }
 }

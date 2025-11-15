@@ -3,6 +3,7 @@ package com.example.demo.service.impl;
 import com.example.demo.dto.SalesOrderDTO;
 import com.example.demo.entity.SalesOrder;
 import com.example.demo.entity.User;
+import com.example.demo.mapper.SalesOrderMapper;
 import com.example.demo.repository.SalesOrderRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.SalesOrderService;
@@ -21,52 +22,50 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     private final SalesOrderRepository salesOrderRepository;
     private final UserRepository userRepository;
 
+    private final SalesOrderMapper mapper = SalesOrderMapper.INSTANCE;
+
     @Override
     @Transactional
-    public SalesOrderDTO createSalesOrder(SalesOrderDTO salesOrderDTO) {
-        // Vérifier si l'utilisateur existe
-        User user = userRepository.findById(salesOrderDTO.getUser_id())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + salesOrderDTO.getUser_id()));
+    public SalesOrderDTO createSalesOrder(SalesOrderDTO dto) {
+        User user = userRepository.findById(dto.getUser_id())
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getUser_id()));
 
-        SalesOrder salesOrder = new SalesOrder();
+        SalesOrder salesOrder = mapper.toEntity(dto);
         salesOrder.setUser(user);
-        salesOrder.setOrderStatus(salesOrderDTO.getOrderStatus());
 
-        SalesOrder savedOrder = salesOrderRepository.save(salesOrder);
-        return convertToDTO(savedOrder);
+        return mapper.toDTO(salesOrderRepository.save(salesOrder));
     }
 
     @Override
     public SalesOrderDTO getSalesOrderById(UUID id) {
-        SalesOrder salesOrder = salesOrderRepository.findById(id)
+        SalesOrder order = salesOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + id));
-        return convertToDTO(salesOrder);
+        return mapper.toDTO(order);
     }
 
     @Override
     public List<SalesOrderDTO> getAllSalesOrders() {
         return salesOrderRepository.findAll()
                 .stream()
-                .map(this::convertToDTO)
+                .map(mapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public SalesOrderDTO updateSalesOrder(UUID id, SalesOrderDTO salesOrderDTO) {
+    public SalesOrderDTO updateSalesOrder(UUID id, SalesOrderDTO dto) {
         SalesOrder existingOrder = salesOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + id));
 
-        existingOrder.setOrderStatus(salesOrderDTO.getOrderStatus());
+        existingOrder.setOrderStatus(dto.getOrderStatus());
 
-        if (salesOrderDTO.getUser_id() != null) {
-            User user = userRepository.findById(salesOrderDTO.getUser_id())
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + salesOrderDTO.getUser_id()));
+        if (dto.getUser_id() != null) {
+            User user = userRepository.findById(dto.getUser_id())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getUser_id()));
             existingOrder.setUser(user);
         }
 
-        SalesOrder updatedOrder = salesOrderRepository.save(existingOrder);
-        return convertToDTO(updatedOrder);
+        return mapper.toDTO(salesOrderRepository.save(existingOrder));
     }
 
     @Override
@@ -75,13 +74,5 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         SalesOrder salesOrder = salesOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("SalesOrder not found with id: " + id));
         salesOrderRepository.delete(salesOrder);
-    }
-
-    private SalesOrderDTO convertToDTO(SalesOrder salesOrder) {
-        SalesOrderDTO dto = new SalesOrderDTO();
-        dto.setId(salesOrder.getId());
-        dto.setUser_id(salesOrder.getUser().getId());
-        dto.setOrderStatus(salesOrder.getOrderStatus());
-        return dto;
     }
 }

@@ -4,6 +4,8 @@ import com.example.demo.dto.PurchaseOrderDTO;
 import com.example.demo.dto.PurchaseOrderLineDTO;
 import com.example.demo.entity.*;
 import com.example.demo.enums.PurchaseOrderStatus;
+import com.example.demo.mapper.PurchaseOrderLineMapper;
+import com.example.demo.mapper.PurchaseOrderMapper;
 import com.example.demo.repository.*;
 import com.example.demo.service.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
@@ -24,50 +26,56 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
-    private final InventoryRepository inventoryRepository ;
+    private final InventoryRepository inventoryRepository;
+
+    private final PurchaseOrderMapper orderMapper = PurchaseOrderMapper.INSTANCE;
+    private final PurchaseOrderLineMapper lineMapper = PurchaseOrderLineMapper.INSTANCE;
 
     @Override
     @Transactional
     public PurchaseOrderDTO createPurchaseOrder(PurchaseOrderDTO purchaseOrderDTO) {
-        // Vérifier le fournisseur
         Supplier supplier = supplierRepository.findById(purchaseOrderDTO.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Fournisseur non trouvé avec l'id: " + purchaseOrderDTO.getSupplierId()));
 
-        // Vérifier l'utilisateur créateur
         User createdBy = userRepository.findById(purchaseOrderDTO.getCreatedByUserId())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'id: " + purchaseOrderDTO.getCreatedByUserId()));
 
-        PurchaseOrder purchaseOrder = new PurchaseOrder();
+        PurchaseOrder purchaseOrder = orderMapper.toEntity(purchaseOrderDTO);
         purchaseOrder.setSupplier(supplier);
         purchaseOrder.setCreatedBy(createdBy);
         purchaseOrder.setStatus(PurchaseOrderStatus.DRAFT);
-        purchaseOrder.setExpectedDelivery(purchaseOrderDTO.getExpectedDelivery());
 
         PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
 
-        // Sauvegarder les lignes de commande
         if (purchaseOrderDTO.getOrderLines() != null && !purchaseOrderDTO.getOrderLines().isEmpty()) {
             List<PurchaseOrderLine> orderLines = purchaseOrderDTO.getOrderLines().stream()
-                    .map(lineDTO -> convertToLineEntity(lineDTO, savedOrder))
+                    .map(lineDTO -> {
+                        PurchaseOrderLine line = lineMapper.toEntity(lineDTO);
+                        line.setPurchaseOrder(savedOrder);
+                        Product product = productRepository.findById(lineDTO.getProductId())
+                                .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + lineDTO.getProductId()));
+                        line.setProduct(product);
+                        return line;
+                    })
                     .collect(Collectors.toList());
             purchaseOrderLineRepository.saveAll(orderLines);
         }
 
-        return convertToDTO(savedOrder);
+        return orderMapper.toDTO(savedOrder);
     }
 
     @Override
     public PurchaseOrderDTO getPurchaseOrderById(UUID id) {
         PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande d'achat non trouvée avec l'id: " + id));
-        return convertToDTO(purchaseOrder);
+        return orderMapper.toDTO(purchaseOrder);
     }
 
     @Override
     public List<PurchaseOrderDTO> getAllPurchaseOrders() {
         return purchaseOrderRepository.findAll()
                 .stream()
-                .map(this::convertToDTO)
+                .map(orderMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -77,7 +85,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrder existingOrder = purchaseOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande d'achat non trouvée avec l'id: " + id));
 
-        // Mettre à jour les champs de base
         if (purchaseOrderDTO.getSupplierId() != null) {
             Supplier supplier = supplierRepository.findById(purchaseOrderDTO.getSupplierId())
                     .orElseThrow(() -> new RuntimeException("Fournisseur non trouvé avec l'id: " + purchaseOrderDTO.getSupplierId()));
@@ -86,20 +93,24 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         existingOrder.setExpectedDelivery(purchaseOrderDTO.getExpectedDelivery());
 
-        // Mettre à jour les lignes de commande
         if (purchaseOrderDTO.getOrderLines() != null) {
-            // Supprimer les anciennes lignes
             purchaseOrderLineRepository.deleteByPurchaseOrderId(id);
 
-            // Créer les nouvelles lignes
             List<PurchaseOrderLine> newOrderLines = purchaseOrderDTO.getOrderLines().stream()
-                    .map(lineDTO -> convertToLineEntity(lineDTO, existingOrder))
+                    .map(lineDTO -> {
+                        PurchaseOrderLine line = lineMapper.toEntity(lineDTO);
+                        line.setPurchaseOrder(existingOrder);
+                        Product product = productRepository.findById(lineDTO.getProductId())
+                                .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + lineDTO.getProductId()));
+                        line.setProduct(product);
+                        return line;
+                    })
                     .collect(Collectors.toList());
             purchaseOrderLineRepository.saveAll(newOrderLines);
         }
 
         PurchaseOrder updatedOrder = purchaseOrderRepository.save(existingOrder);
-        return convertToDTO(updatedOrder);
+        return orderMapper.toDTO(updatedOrder);
     }
 
     @Override
@@ -108,10 +119,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Commande d'achat non trouvée avec l'id: " + id));
 
-        // Supprimer d'abord les lignes
         purchaseOrderLineRepository.deleteByPurchaseOrderId(id);
-
-        // Puis supprimer la commande
         purchaseOrderRepository.delete(purchaseOrder);
     }
 
@@ -119,7 +127,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public List<PurchaseOrderDTO> getPurchaseOrdersBySupplier(UUID supplierId) {
         return purchaseOrderRepository.findBySupplierId(supplierId)
                 .stream()
-                .map(this::convertToDTO)
+                .map(orderMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -127,15 +135,15 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     public List<PurchaseOrderDTO> getPurchaseOrdersByStatus(PurchaseOrderStatus status) {
         return purchaseOrderRepository.findByStatus(status)
                 .stream()
-                .map(this::convertToDTO)
+                .map(orderMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-    // CORRECTION : Ajouter cette méthode manquante
+    @Override
     public List<PurchaseOrderDTO> getPurchaseOrdersByUser(UUID userId) {
         return purchaseOrderRepository.findByCreatedById(userId)
                 .stream()
-                .map(this::convertToDTO)
+                .map(orderMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -168,9 +176,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             }
         }
 
-        return convertToDTO(updatedOrder);
+        return orderMapper.toDTO(updatedOrder);
     }
-
 
     @Override
     @Transactional
@@ -185,7 +192,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         purchaseOrder.setStatus(PurchaseOrderStatus.APPROVED);
 
         PurchaseOrder updatedOrder = purchaseOrderRepository.save(purchaseOrder);
-        return convertToDTO(updatedOrder);
+        return orderMapper.toDTO(updatedOrder);
     }
 
     @Override
@@ -194,57 +201,5 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return orderLines.stream()
                 .map(PurchaseOrderLine::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private PurchaseOrderLine convertToLineEntity(PurchaseOrderLineDTO lineDTO, PurchaseOrder purchaseOrder) {
-        // Vérifier le produit
-        Product product = productRepository.findById(lineDTO.getProductId())
-                .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + lineDTO.getProductId()));
-
-        PurchaseOrderLine line = new PurchaseOrderLine();
-        line.setPurchaseOrder(purchaseOrder);
-        line.setProduct(product);
-        line.setQuantity(lineDTO.getQuantity());
-        line.setUnitPrice(lineDTO.getUnitPrice());
-
-        return line;
-    }
-
-    private PurchaseOrderDTO convertToDTO(PurchaseOrder purchaseOrder) {
-        List<PurchaseOrderLine> orderLines = purchaseOrderLineRepository.findByPurchaseOrderId(purchaseOrder.getId());
-
-        // Calculer le montant total
-        BigDecimal totalAmount = orderLines.stream()
-                .map(PurchaseOrderLine::getTotalPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<PurchaseOrderLineDTO> lineDTOs = orderLines.stream()
-                .map(this::convertLineToDTO)
-                .collect(Collectors.toList());
-
-        return PurchaseOrderDTO.builder()
-                .id(purchaseOrder.getId())
-                .supplierId(purchaseOrder.getSupplier().getId())
-                .createdByUserId(purchaseOrder.getCreatedBy().getId())
-                .approvedByUserId(purchaseOrder.getApprovedBy() != null ?
-                        purchaseOrder.getApprovedBy().getId() : null)
-                .status(purchaseOrder.getStatus())
-                .createdAt(purchaseOrder.getCreatedAt())
-                .expectedDelivery(purchaseOrder.getExpectedDelivery())
-                .totalAmount(totalAmount)
-                .orderLines(lineDTOs)
-                .build();
-    }
-
-    private PurchaseOrderLineDTO convertLineToDTO(PurchaseOrderLine line) {
-        return PurchaseOrderLineDTO.builder()
-                .id(line.getId())
-                .productId(line.getProduct().getId())
-                .productName(line.getProduct().getName())
-                .productSku(line.getProduct().getSku())
-                .quantity(line.getQuantity())
-                .unitPrice(line.getUnitPrice())
-                .totalPrice(line.getTotalPrice())
-                .build();
     }
 }

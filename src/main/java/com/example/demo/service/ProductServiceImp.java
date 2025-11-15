@@ -3,6 +3,7 @@ package com.example.demo.service;
 import com.example.demo.dto.ProductDTO;
 import com.example.demo.entity.Inventory;
 import com.example.demo.entity.Product;
+import com.example.demo.mapper.ProductMapper;
 import com.example.demo.repository.InventoryRepository;
 import com.example.demo.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,31 +21,32 @@ public class ProductServiceImp implements ProductService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
 
+    private final ProductMapper mapper = ProductMapper.INSTANCE;
+
     @Override
     public ProductDTO createProduct(ProductDTO productDTO) {
-        // Vérifier si le SKU existe déjà
         if (productRepository.existsBySku(productDTO.getSku())) {
             throw new RuntimeException("Un produit avec ce SKU existe déjà: " + productDTO.getSku());
         }
 
-        Product product = toEntity(productDTO);
+        Product product = mapper.toEntity(productDTO);
         Product saved = productRepository.save(product);
-        return toDto(saved);
+        return mapper.toDTO(saved);
     }
 
     @Override
     public ProductDTO getProductById(UUID id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + id));
-        return toDto(product);
+        return mapper.toDTO(product);
     }
 
     @Override
     public List<ProductDTO> getAllProducts() {
         return productRepository.findAll()
                 .stream()
-                .map(this::toDto)
-                .filter(Objects::nonNull) // Filtrer les valeurs null
+                .map(mapper::toDTO)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
@@ -53,20 +55,18 @@ public class ProductServiceImp implements ProductService {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + id));
 
-        // Vérifier si le SKU a changé et s'il existe déjà
         if (!existingProduct.getSku().equals(productDTO.getSku()) &&
                 productRepository.existsBySku(productDTO.getSku())) {
             throw new RuntimeException("Un autre produit avec ce SKU existe déjà: " + productDTO.getSku());
         }
 
-        // Mettre à jour les propriétés
         existingProduct.setName(productDTO.getName());
         existingProduct.setDescription(productDTO.getDescription());
         existingProduct.setSku(productDTO.getSku());
         existingProduct.setPrice(productDTO.getPrice());
 
         Product updated = productRepository.save(existingProduct);
-        return toDto(updated);
+        return mapper.toDTO(updated);
     }
 
     @Override
@@ -74,7 +74,6 @@ public class ProductServiceImp implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + id));
 
-        // Vérifier les relations avant suppression
         if (product.getInventories() != null && !product.getInventories().isEmpty()) {
             throw new RuntimeException("Impossible de supprimer le produit: il existe des inventaires associés");
         }
@@ -92,7 +91,7 @@ public class ProductServiceImp implements ProductService {
     public ProductDTO getProductBySku(String sku) {
         Product product = productRepository.findBySku(sku)
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec le SKU: " + sku));
-        return toDto(product);
+        return mapper.toDTO(product);
     }
 
     @Override
@@ -101,7 +100,7 @@ public class ProductServiceImp implements ProductService {
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé"));
 
         List<Inventory> productStock = inventoryRepository.findByProductId(uuid);
-        String newStatus = "HIDINE"; 
+        String newStatus = "HIDINE";
 
         if (productStock == null || productStock.isEmpty()) {
             if ("CREATED".equals(product.getStatus()) || "RESERVED".equals(product.getStatus())) {
@@ -113,31 +112,5 @@ public class ProductServiceImp implements ProductService {
         } else {
             throw new RuntimeException("Le produit est déjà réservé, impossible de changer ce status");
         }
-    }
-
-    private Product toEntity(ProductDTO dto) {
-        if (dto == null) {
-            return null;
-        }
-        return Product.builder()
-                .id(dto.getId())
-                .name(dto.getName())
-                .description(dto.getDescription())
-                .sku(dto.getSku())
-                .price(dto.getPrice())
-                .build();
-    }
-
-    private ProductDTO toDto(Product entity) {
-        if (entity == null) {
-            throw new IllegalArgumentException("Product entity cannot be null");
-        }
-        return ProductDTO.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .sku(entity.getSku())
-                .price(entity.getPrice())
-                .build();
     }
 }

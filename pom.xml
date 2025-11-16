@@ -133,6 +133,7 @@
                                 <exclude>**/entity/**</exclude>
                                 <exclude>**/model/**</exclude>
                                 <exclude>**/mapper/**</exclude>
+                                <exclude>**/controller/**</exclude>
                             </excludes>
                         </configuration>
                     </execution>

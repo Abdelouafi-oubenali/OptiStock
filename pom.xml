@@ -89,11 +89,11 @@
             <scope>provided</scope>
         </dependency>
 
-
     </dependencies>
 
     <build>
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -115,12 +115,24 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
                 <executions>
+
+                    <!-- Prepare agent with exclusions -->
                     <execution>
                         <id>prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/dto/**</exclude>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/mapper/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
+
+                    <!-- Generate JaCoCo report -->
                     <execution>
                         <id>report</id>
                         <phase>test</phase>
@@ -128,6 +140,8 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
+
+                    <!-- Coverage rules -->
                     <execution>
                         <id>check</id>
                         <goals>
@@ -148,10 +162,11 @@
                             </rules>
                         </configuration>
                     </execution>
+
                 </executions>
             </plugin>
 
-            <!--  Surefire plugin  -->
+            <!--  Surefire  -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

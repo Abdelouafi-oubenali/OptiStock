@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         SPRING_PROFILES_ACTIVE = 'test'
-        SONAR_TOKEN = credentials('sonar-token')
     }
 
     tools {
@@ -12,7 +11,6 @@ pipeline {
     }
 
     stages {
-
         stage('Récupération du code source') {
             steps {
                 git branch: 'main',
@@ -23,13 +21,13 @@ pipeline {
 
         stage('Compilation du projet') {
             steps {
-                sh 'mvn clean compile'
+                sh 'mvn clean compile -B'
             }
         }
 
         stage('Exécution des tests unitaires') {
             steps {
-                sh 'mvn test jacoco:report'
+                sh 'mvn test jacoco:report -B'
             }
             post {
                 always {
@@ -45,28 +43,34 @@ pipeline {
 
         stage('Analyse SonarQube') {
             steps {
-                withSonarQubeEnv('SonarQube-Server') {
-                    sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=gestion-stock \
-                        -Dsonar.host.url=http://sonarqube:9000 \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                    """
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    withSonarQubeEnv('SonarQube-Server') {
+                        sh """
+                            mvn sonar:sonar \
+                            -Dsonar.projectKey=gestion-stock \
+                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.login=${SONAR_TOKEN} \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.sources=src/main/java \
+                            -Dsonar.tests=src/test/java
+                        """
+                    }
                 }
             }
         }
 
         stage('Vérification de la qualité du code') {
             steps {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
-
+                }
             }
         }
 
         stage('Création du package') {
             steps {
-                sh 'mvn package -DskipTests'
+                sh 'mvn package -DskipTests -B'
                 archiveArtifacts 'target/*.jar'
             }
         }
@@ -74,13 +78,13 @@ pipeline {
 
     post {
         always {
-            echo 'Nettoyage de l’environnement'
+            echo 'Nettoyage de l''environnement'
         }
         success {
             echo 'Construction et tests effectués avec succès'
         }
         failure {
-            echo 'Une erreur s’est produite lors de l’exécution'
+            echo 'Une erreur s''est produite lors de l''exécution'
         }
     }
 }

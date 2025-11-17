@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         SPRING_PROFILES_ACTIVE = 'test'
+        SONAR_TOKEN = credentials('sonar-token')
     }
-
 
     tools {
         jdk 'jdk-21'
@@ -12,6 +12,7 @@ pipeline {
     }
 
     stages {
+
         stage('Récupération du code source') {
             steps {
                 git branch: 'main',
@@ -42,18 +43,16 @@ pipeline {
             }
         }
 
-        stage('Création du package') {
-            steps {
-                sh 'mvn package -DskipTests'
-                archiveArtifacts 'target/*.jar'
-            }
-        }
-
-        /*
         stage('Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube-Server') {
-                    sh "mvn sonar:sonar -Dsonar.projectKey=gestion-stock -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml"
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=gestion-stock \
+                        -Dsonar.host.url=http://sonarqube:9000 \
+                        -Dsonar.login=${SONAR_TOKEN} \
+                        -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    """
                 }
             }
         }
@@ -65,53 +64,24 @@ pipeline {
                 }
             }
         }
-        */
 
-        /*
-        stage('Création de l’image Docker') {
+        stage('Création du package') {
             steps {
-                script {
-                    docker.build("gestion-stock:${env.BUILD_ID}")
-                }
+                sh 'mvn package -DskipTests'
+                archiveArtifacts 'target/*.jar'
             }
         }
-
-        stage('Exécution des conteneurs Docker') {
-            steps {
-                sh 'docker-compose up -d'
-                script {
-                    sleep(30)
-                    sh 'curl -f http://localhost:8080/actuator/health || exit 1'
-                }
-            }
-        }
-        */
     }
 
     post {
         always {
             echo 'Nettoyage de l’environnement'
-            // sh 'docker-compose down || true'  // À décommenter lors de l’intégration de Docker
         }
         success {
-            echo ' Construction et tests effectués avec succès'
-            /*
-            emailext (
-                subject: "SUCCÈS : Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: "L’application a été construite et testée avec succès.\n\nLien Jenkins : ${env.BUILD_URL}",
-                to: "abdelouafi@admin.com"
-            )
-            */
+            echo 'Construction et tests effectués avec succès'
         }
         failure {
-            echo ' Une erreur s’est produite lors de l’exécution'
-            /*
-            emailext (
-                subject: "ÉCHEC : Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
-                body: "Échec de la construction ou des tests de l’application.\n\nConsultez les journaux : ${env.BUILD_URL}",
-                to: "abdelouafi@admin.com"
-            )
-            */
+            echo 'Une erreur s’est produite lors de l’exécution'
         }
     }
 }

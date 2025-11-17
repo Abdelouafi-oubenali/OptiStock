@@ -14,8 +14,8 @@ pipeline {
         stage('Récupération du code source') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/Abdelouafi-oubenali/OptiStock',
-                credentialsId: 'github-ssh'
+                    url: 'https://github.com/Abdelouafi-oubenali/OptiStock',
+                    credentialsId: 'github-ssh'
             }
         }
 
@@ -78,13 +78,13 @@ pipeline {
 
     post {
         always {
-            echo 'Nettoyage de l''environnement'
+            echo "Nettoyage de l'environnement"
         }
         success {
-            echo 'Construction et tests effectués avec succès'
+            echo "Construction et tests effectués avec succès"
         }
         failure {
-            echo 'Une erreur s''est produite lors de l''exécution'
+            echo "Une erreur s'est produite lors de l'exécution"
         }
     }
 }

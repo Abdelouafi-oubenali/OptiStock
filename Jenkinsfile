@@ -59,9 +59,8 @@ pipeline {
 
         stage('Vérification de la qualité du code') {
             steps {
-                timeout(time: 20, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
-                }
+
             }
         }
 

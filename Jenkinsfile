@@ -48,7 +48,7 @@ pipeline {
                         sh """
                             mvn sonar:sonar \
                             -Dsonar.projectKey=gestion-stock \
-                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.host.url=http://sonarqube_server:9000 \
                             -Dsonar.login=${SONAR_TOKEN} \
                             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                             -Dsonar.java.binaries=target/classes \
@@ -62,7 +62,7 @@ pipeline {
 
         stage('Vérification de la qualité du code') {
             steps {
-                timeout(time: 40, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }

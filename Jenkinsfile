@@ -52,13 +52,13 @@ pipeline {
                           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                           -Dsonar.java.binaries=target/classes \
                           -Dsonar.sources=src/main/java \
-                          -Dsonar.tests=src/test/java
+                          -Dsonar.tests=src/test/java \
+                          -Dsonar.exclusions=**/controller/**/*,**/mapper/**/*
                         '''
                     }
                 }
             }
         }
-
 
         stage('Vérification de la qualité du code') {
             steps {

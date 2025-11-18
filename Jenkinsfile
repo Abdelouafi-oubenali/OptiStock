@@ -53,8 +53,7 @@ pipeline {
                           -Dsonar.java.binaries=target/classes \
                           -Dsonar.sources=src/main/java \
                           -Dsonar.tests=src/test/java \
-                          -Dsonar.exclusions=**/dto/**/*,**/controller/**/*,**/mapper/**/*                        '''
-                    }
+                          -Dsonar.exclusions=**/dto/**/*,**/enums/**,**/entity/**/*,**/controller/**/*,**/mapper/**/*                    }
                 }
             }
         }

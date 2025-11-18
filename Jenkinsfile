@@ -45,20 +45,20 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh """
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=gestion-stock \
-                            -Dsonar.host.url=http://sonarqube_server:9000 \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.sources=src/main/java \
-                            -Dsonar.tests=src/test/java
-                        """
+                        sh '''#!/bin/bash
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=gestion-stock \
+                          -Dsonar.login=$SONAR_TOKEN \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                          -Dsonar.java.binaries=target/classes \
+                          -Dsonar.sources=src/main/java \
+                          -Dsonar.tests=src/test/java
+                        '''
                     }
                 }
             }
         }
+
 
         stage('Vérification de la qualité du code') {
             steps {

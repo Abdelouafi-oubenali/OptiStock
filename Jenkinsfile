@@ -48,7 +48,7 @@ pipeline {
                         sh """
                             mvn sonar:sonar \
                             -Dsonar.projectKey=gestion-stock \
-                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.host.url=http://sonarqube_server:9000 \
                             -Dsonar.login=${SONAR_TOKEN} \
                             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                             -Dsonar.java.binaries=target/classes \

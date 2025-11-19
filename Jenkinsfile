@@ -69,19 +69,20 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('SonarQube-Server') {
-                        sh '''#!/bin/bash
-        mvn sonar:sonar \
-          -Dsonar.projectKey=gestion-stock \
-          -Dsonar.login=$SONAR_TOKEN \
-          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-          -Dsonar.junit.reportPaths=target/surefire-reports \
-          -Dsonar.java.binaries=target/classes \
-          -Dsonar.java.coveragePlugin=jacoco \
-          -Dsonar.java.test.binaries=target/test-classes
-          -Dsonar.host.url=http://sonarqube:9000/ \
-          -Dsonar.sources=src/main/java \
-          -Dsonar.tests=src/test/java \
-        '''
+                      sh '''#!/bin/bash
+                          mvn sonar:sonar \
+                            -Dsonar.projectKey=gestion-stock \
+                            -Dsonar.login=$SONAR_TOKEN \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                            -Dsonar.junit.reportPaths=target/surefire-reports \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.java.coveragePlugin=jacoco \
+                            -Dsonar.java.test.binaries=target/test-classes \
+                            -Dsonar.host.url=http://sonarqube:9000/ \
+                            -Dsonar.sources=src/main/java \
+                            -Dsonar.tests=src/test/java
+                      '''
+
                     }
                 }
             }

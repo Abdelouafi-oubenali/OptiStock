@@ -10,6 +10,8 @@ pipeline {
         maven 'maven-3.8.5'
     }
 
+
+
     stages {
         stage('Récupération du code source') {
             steps {
@@ -41,6 +43,28 @@ pipeline {
             }
         }
 
+
+        stage('Verify JaCoCo Report') {
+                    steps {
+                        script {
+                            sh '''
+                                echo "=== Vérification du rapport JaCoCo ==="
+                                ls -la target/site/jacoco/ || echo "Dossier jacoco n'existe pas!"
+                                if [ -f target/site/jacoco/jacoco.xml ]; then
+                                    echo "✅ jacoco.xml trouvé"
+                                    echo "Taille du fichier:"
+                                    du -h target/site/jacoco/jacoco.xml
+                                    echo "Premières lignes:"
+                                    head -30 target/site/jacoco/jacoco.xml
+                                else
+                                    echo "❌ jacoco.xml NOT FOUND!"
+                                    exit 1
+                                fi
+                            '''
+                        }
+                    }
+                }
+
         stage('Analyse SonarQube') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
@@ -50,10 +74,13 @@ pipeline {
           -Dsonar.projectKey=gestion-stock \
           -Dsonar.login=$SONAR_TOKEN \
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+          -Dsonar.junit.reportPaths=target/surefire-reports \
           -Dsonar.java.binaries=target/classes \
+          -Dsonar.java.coveragePlugin=jacoco \
+          -Dsonar.java.test.binaries=target/test-classes
+          -Dsonar.host.url=http://sonarqube:9000/ \
           -Dsonar.sources=src/main/java \
           -Dsonar.tests=src/test/java \
-          -Dsonar.exclusions=**/dto/**/*,**/enums/**/*,**/entity/**/*,**/repository/**,**/controller/**/*,**/mapper/**/*
         '''
                     }
                 }

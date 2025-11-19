@@ -1,4 +1,3 @@
-  version: "3.8"
 
   services:
     postgres:
@@ -84,7 +83,7 @@
 
     # SonarQube
     sonarqube:
-      image: sonarqube:lts
+      image: sonarqube:community
       container_name: sonarqube_server
       depends_on:
         postgres_sonar:

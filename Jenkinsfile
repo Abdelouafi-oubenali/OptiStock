@@ -46,16 +46,16 @@ pipeline {
                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                    withSonarQubeEnv('SonarQube-Server') {
                        sh '''#!/bin/bash
-       mvn sonar:sonar \
-         -Dsonar.projectKey=gestion-stock \
-         -Dsonar.login=$SONAR_TOKEN \
-         -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-         -Dsonar.java.binaries=target/classes \
-         -Dsonar.sources=src/main/java \
-         -Dsonar.tests=src/test/java \
-         -Dsonar.inclusions=src/main/java/**/service/** \
-         -Dsonar.exclusions=**/dto/**/*,**/enums/**/*,**/entity/**/*,**/repository/**,**/controller/**/*,**/mapper/**/*,**/*Impl.java
-       '''
+               mvn sonar:sonar \
+                 -Dsonar.projectKey=gestion-stock \
+                 -Dsonar.login=$SONAR_TOKEN \
+                 -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                 -Dsonar.java.binaries=target/classes \
+                 -Dsonar.sources=src/main/java \
+                 -Dsonar.tests=src/test/java \
+                 -Dsonar.inclusions=src/main/java/**/service/** \
+                 -Dsonar.exclusions=**/dto/**/*,**/enums/**/*,**/entity/**/*,**/repository/**,**/controller/**/*,**/mapper/**/*,**/*Impl.java
+               '''
                    }
                }
            }

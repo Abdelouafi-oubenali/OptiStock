@@ -1,6 +1,5 @@
 package com.example.demo.dto;
 
-import com.example.demo.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,10 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RegisterDTO {
-    private String firstName;
-    private String lastName;
+public class LoginDTO {
     private String email;
     private String password;
-    private Role role;
 }

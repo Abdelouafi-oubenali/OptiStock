@@ -1,109 +1,127 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: stock_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - demo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d stock_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  services:
-    postgres:
-      image: postgres:15
-      container_name: postgres_db
-      environment:
-        POSTGRES_USER: admin
-        POSTGRES_PASSWORD: admin
-        POSTGRES_DB: stock_db
-      ports:
-        - "5433:5432"
-      volumes:
-        - demo_postgres_data:/var/lib/postgresql/data
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U admin -d stock_db"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spring_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-    app:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      container_name: spring_app
-      depends_on:
-        postgres:
-          condition: service_healthy
-      ports:
-        - "8080:8080"
-      environment:
-        SPRING_PROFILES_ACTIVE: docker
-        JAVA_OPTS: "-Xmx512m -Xms256m"
-      volumes:
-        - ./logs:/app/logs
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: abdelouafi@admin.com
+      PGADMIN_DEFAULT_PASSWORD: abdelouafi
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
 
-    # pgAdmin
-    pgadmin:
-      image: dpage/pgadmin4
-      container_name: pgadmin
-      environment:
-        PGADMIN_DEFAULT_EMAIL: abdelouafi@admin.com
-        PGADMIN_DEFAULT_PASSWORD: abdelouafi
-      ports:
-        - "5050:80"
-      depends_on:
-        - postgres
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins_server
+    user: root
+    ports:
+      - "8082:8080"
+      - "50000:50000"
+    volumes:
+      - demo_jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
 
-    # Jenkins
-    jenkins:
-      image: jenkins/jenkins:lts
-      container_name: jenkins_server
-      user: root
-      ports:
-        - "8082:8080"
-        - "50000:50000"
-      volumes:
-        - demo_jenkins_home:/var/jenkins_home
-        - /var/run/docker.sock:/var/run/docker.sock
-      environment:
-        JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+  postgres_sonar:
+    image: postgres:15
+    container_name: postgres_sonar
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    ports:
+      - "5434:5432"
+    volumes:
+      - demo_sonar_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonarqube"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-    postgres_sonar:
-      image: postgres:15
-      container_name: postgres_sonar
-      environment:
-        POSTGRES_USER: sonar
-        POSTGRES_PASSWORD: sonar
-        POSTGRES_DB: sonarqube
-      ports:
-        - "5434:5432"
-      volumes:
-        - demo_sonar_postgres_data:/var/lib/postgresql/data
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U sonar -d sonarqube"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube_server
+    depends_on:
+      postgres_sonar:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres_sonar:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - demo_sonarqube_data:/opt/sonarqube/data
+      - demo_sonarqube_logs:/opt/sonarqube/logs
+      - demo_sonarqube_extensions:/opt/sonarqube/extensions
 
-    # SonarQube
-    sonarqube:
-      image: sonarqube:community
-      container_name: sonarqube_server
-      depends_on:
-        postgres_sonar:
-          condition: service_healthy
-      ports:
-        - "9000:9000"
-      environment:
-        SONAR_JDBC_URL: jdbc:postgresql://postgres_sonar:5432/sonarqube
-        SONAR_JDBC_USERNAME: sonar
-        SONAR_JDBC_PASSWORD: sonar
-        SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
-      volumes:
-        - demo_sonarqube_data:/opt/sonarqube/data
-        - demo_sonarqube_logs:/opt/sonarqube/logs
-        - demo_sonarqube_extensions:/opt/sonarqube/extensions
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - demo_elasticsearch_data:/usr/share/elasticsearch/data
 
-  volumes:
-    demo_postgres_data:
-    demo_sonar_postgres_data:
-    demo_jenkins_home:
-    demo_sonarqube_data:
-    demo_sonarqube_logs:
-    demo_sonarqube_extensions:
+  kibana:
+    image: kibana:8.12.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
+    depends_on:
+      - elasticsearch
+
+volumes:
+  demo_postgres_data:
+  demo_sonar_postgres_data:
+  demo_jenkins_home:
+  demo_sonarqube_data:
+  demo_sonarqube_logs:
+  demo_sonarqube_extensions:
+  demo_elasticsearch_data:

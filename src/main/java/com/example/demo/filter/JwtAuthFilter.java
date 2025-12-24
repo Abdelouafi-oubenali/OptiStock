@@ -2,13 +2,13 @@ package com.example.demo.filter;
 
 import com.example.demo.security.JwtUtil;
 import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.security.SignatureException; // التصحيح هنا
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,46 +18,84 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private UserDetailsService userDetailsService;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
-
-        String requestPath = request.getServletPath();
-        if (requestPath.startsWith("/api/auth/") ||
-                requestPath.startsWith("/api/register/")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String username;
+        final String ipAddress = request.getRemoteAddr();
+        final String endpoint = request.getRequestURI();
+        final String method = request.getMethod();
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (endpoint.startsWith("/api/auth/") ||
+                endpoint.startsWith("/api/register/") ||
+                endpoint.equals("/api/products/test/elk") ||
+                endpoint.equals("/api/products/health") ||
+                endpoint.startsWith("/api/public/")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwtToken = authHeader.substring(7);
-        String username = null;
+        log.info("API_ACCESS_ATTEMPT - Endpoint: {}, Method: {}, IP: {}, HasAuth: {}, Time: {}",
+                endpoint,
+                method,
+                ipAddress,
+                authHeader != null,
+                LocalDateTime.now()
+        );
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("API_ACCESS_NO_TOKEN - Endpoint: {}, Method: {}, IP: {}, Time: {}",
+                    endpoint,
+                    method,
+                    ipAddress,
+                    LocalDateTime.now()
+            );
+
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Unauthorized - Authentication required\"}");
+
+            return;
+        }
+
+        jwt = authHeader.substring(7);
 
         try {
-            username = jwtUtil.extractUsername(jwtToken);
+            username = jwtUtil.extractUsername(jwt);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-                if (jwtUtil.validateToken(jwtToken)) {
+                if (jwtUtil.validateToken(jwt)) {
+                    if (!username.equals(userDetails.getUsername())) {
+                        log.warn("API_ACCESS_USERNAME_MISMATCH - TokenUser: {}, DBUser: {}, Endpoint: {}, IP: {}, Time: {}",
+                                username,
+                                userDetails.getUsername(),
+                                endpoint,
+                                ipAddress,
+                                LocalDateTime.now()
+                        );
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"error\": \"Unauthorized - Invalid token\"}");
+                        return;
+                    }
+
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -66,27 +104,64 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    log.info("API_ACCESS_AUTHORIZED - User: {}, Endpoint: {}, Method: {}, IP: {}, Time: {}",
+                            username,
+                            endpoint,
+                            method,
+                            ipAddress,
+                            LocalDateTime.now()
+                    );
+
+                } else {
+                    log.warn("API_ACCESS_INVALID_TOKEN - User: {}, Endpoint: {}, IP: {}, Time: {}",
+                            username,
+                            endpoint,
+                            ipAddress,
+                            LocalDateTime.now()
+                    );
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Unauthorized - Invalid token\"}");
+                    return;
                 }
             }
 
-            filterChain.doFilter(request, response);
-
         } catch (ExpiredJwtException e) {
-            sendUnauthorizedResponse(response, "Token has expired");
-        } catch (MalformedJwtException e) {
-            sendUnauthorizedResponse(response, "Invalid token");
-        } catch (SignatureException e) {
-            sendUnauthorizedResponse(response, "Invalid token signature");
-        } catch (Exception e) {
-            logger.error("Authentication error", e);
-            sendUnauthorizedResponse(response, "Authentication failed");
-        }
-    }
+            log.warn("API_ACCESS_TOKEN_EXPIRED - Endpoint: {}, IP: {}, Time: {}",
+                    endpoint,
+                    ipAddress,
+                    LocalDateTime.now()
+            );
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Unauthorized - Token has expired\"}");
+            return;
 
-    private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"error\":\"" + message + "\"}");
+        } catch (SignatureException e) {
+            log.warn("API_ACCESS_TOKEN_SIGNATURE_INVALID - Endpoint: {}, IP: {}, Time: {}",
+                    endpoint,
+                    ipAddress,
+                    LocalDateTime.now()
+            );
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Unauthorized - Invalid token signature\"}");
+            return;
+
+        } catch (Exception e) {
+            log.error("API_ACCESS_TOKEN_ERROR - Endpoint: {}, IP: {}, Error: {}, Time: {}",
+                    endpoint,
+                    ipAddress,
+                    e.getMessage(),
+                    LocalDateTime.now()
+            );
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Unauthorized - Token validation error\"}");
+            return;
+        }
+
+        filterChain.doFilter(request, response);
     }
 }

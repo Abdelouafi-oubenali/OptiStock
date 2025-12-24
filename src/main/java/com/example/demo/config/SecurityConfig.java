@@ -46,22 +46,24 @@ public class SecurityConfig {
 
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/register/**").permitAll()
+                        .requestMatchers("/api/products/health").permitAll()
+                        .requestMatchers("/api/products/test/**").permitAll()
 
                         .requestMatchers("/api/carriers/**").hasRole("ADMIN")
-                        .requestMatchers("/api/products/**").permitAll()
                         .requestMatchers("/api/suppliers/**").hasRole("ADMIN")
                         .requestMatchers("/users/**").hasRole("ADMIN")
+
+                        .requestMatchers("/api/products/**").hasRole("ADMIN")
 
                         .requestMatchers("/api/inventories/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/purchase-orders/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/sales-orders/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/sales-order-lines/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/shipments/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
-
-                        .requestMatchers("/api/warehouses/**")
-                        .hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                        .requestMatchers("/api/warehouses/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
                         .requestMatchers("/articles/**").permitAll()
 

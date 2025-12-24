@@ -50,7 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/register/**").permitAll()
 
                         .requestMatchers("/api/carriers/**").hasRole("ADMIN")
-                        .requestMatchers("/api/products/**").hasRole("ADMIN")
+                        .requestMatchers("/api/products/**").permitAll()
                         .requestMatchers("/api/suppliers/**").hasRole("ADMIN")
                         .requestMatchers("/users/**").hasRole("ADMIN")
 
@@ -63,7 +63,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/warehouses/**")
                         .hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
-                        .requestMatchers("/persons").permitAll()
+                        .requestMatchers("/articles/**").permitAll()
 
                         .anyRequest().authenticated()
                 )

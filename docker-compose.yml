@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:15
@@ -95,6 +97,17 @@ services:
       - demo_sonarqube_data:/opt/sonarqube/data
       - demo_sonarqube_logs:/opt/sonarqube/logs
       - demo_sonarqube_extensions:/opt/sonarqube/extensions
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    container_name: keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    command: start-dev
+    ports:
+      - "8180:8080"
+
 volumes:
   demo_postgres_data:
   demo_sonar_postgres_data:

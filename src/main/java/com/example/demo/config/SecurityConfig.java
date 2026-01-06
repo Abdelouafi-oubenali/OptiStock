@@ -1,8 +1,6 @@
 package com.example.demo.config;
 
-import com.example.demo.filter.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,20 +12,16 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final UserDetailsService userDetailsService;
+    //private final UserDetailsService userDetailsService;
 
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
-
-    public SecurityConfig(UserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
+//    public SecurityConfig(UserDetailsService userDetailsService) {
+//        this.userDetailsService = userDetailsService;
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -51,13 +45,13 @@ public class SecurityConfig {
                         .requestMatchers("/api/register/**").permitAll()
                         .requestMatchers("/api/products/health").permitAll()
                         .requestMatchers("/api/products/test/**").permitAll()
+                        .requestMatchers("/articles/**").permitAll()
+
+                        .requestMatchers("/users/**").authenticated()
 
                         .requestMatchers("/api/carriers/**").hasRole("ADMIN")
                         .requestMatchers("/api/suppliers/**").hasRole("ADMIN")
-                        .requestMatchers("/users/**").hasRole("ADMIN")
-
                         .requestMatchers("/api/products/**").hasRole("ADMIN")
-
                         .requestMatchers("/api/inventories/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/purchase-orders/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/sales-orders/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
@@ -65,9 +59,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/shipments/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/api/warehouses/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
-                        .requestMatchers("/articles/**").permitAll()
-
                         .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(new KeycloakJwtConverter()))
                 )
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
@@ -81,8 +76,7 @@ public class SecurityConfig {
                             response.getWriter().write("{\"error\": \"Forbidden - Insufficient permissions\"}");
                         })
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }

@@ -104,6 +104,8 @@ services:
     command:
       - start-dev
       - --http-enabled=true
+      - --hostname=161.97.128.217
+      - --hostname-port=8180
       - --hostname-strict=false
       - --hostname-strict-https=false
     environment:
@@ -112,6 +114,7 @@ services:
       KC_PROXY: edge
     ports:
       - "8180:8080"
+
 
 volumes:
   demo_postgres_data:

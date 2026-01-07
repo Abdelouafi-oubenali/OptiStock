@@ -105,19 +105,16 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
 
-      KC_HTTP_ENABLED: "true"
-      KC_PROXY: "edge"
-      KC_HOSTNAME: "161.97.128.217"
-      KC_HOSTNAME_PORT: "8180"
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
+    command:
+      - start-dev
+      - --http-enabled=true
+      - --hostname=161.97.128.217
+      - --hostname-port=8180
+      - --hostname-strict=false
+      - --hostname-strict-https=false
 
-      KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_REQUIRE_SSL: "false"
-
-    command: start-dev
     ports:
       - "8180:8080"
-
 
 volumes:
   demo_postgres_data:

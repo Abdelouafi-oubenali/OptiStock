@@ -6,15 +6,15 @@ services:
     container_name: postgres_db_prod
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: Admin123!
+      POSTGRES_DB: stock_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - stock_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d stock_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,33 +28,28 @@ services:
         condition: service_healthy
     command: start
     environment:
-      KEYCLOAK_ADMIN: ${KC_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: Admin456!
 
-      KC_HOSTNAME: ${DOMAIN}
-      KC_HOSTNAME_STRICT: "true"
+      KC_HOSTNAME: votre-domaine.com
+      KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "true"
       KC_HTTP_ENABLED: "false"
-      KC_HTTPS_ENABLED: "true"
       KC_PROXY: edge
-      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/certs/cert.pem
-      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/certs/key.pem
 
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres_db:5432/${DB_NAME}
-      KC_DB_USERNAME: ${DB_USER}
-      KC_DB_PASSWORD: ${DB_PASSWORD}
+      KC_DB_URL: jdbc:postgresql://postgres_db:5432/stock_db
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: Admin123!
 
       KC_CACHE: local
-      KC_HEALTH_ENABLED: "true"
-      KC_METRICS_ENABLED: "true"
 
     volumes:
       - ./certs:/opt/keycloak/certs:ro
-    ports:
-      - "8080:8080"
     networks:
       - stock_network
+    expose:
+      - "8080"
 
   app:
     build:
@@ -69,14 +64,14 @@ services:
         condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/${DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      KEYCLOAK_AUTH-SERVER-URL: https://${DOMAIN}:8080/auth
-      KEYCLOAK_REALM: ${KC_REALM}
-      KEYCLOAK_RESOURCE: ${KC_CLIENT}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/stock_db
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: Admin123!
+      KEYCLOAK_AUTH-SERVER-URL: https://votre-domaine.com/auth
+      KEYCLOAK_REALM: master  # سنغير هذا لاحقاً
+      KEYCLOAK_RESOURCE: spring-app
       KEYCLOAK_SSL-REQUIRED: external
-      JAVA_OPTS: "-Xmx1024m -Xms512m -XX:+UseG1GC"
+      JAVA_OPTS: "-Xmx512m -Xms256m"
     networks:
       - stock_network
     expose:
@@ -93,9 +88,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/ssl/certs:ro
-      - ./nginx/html:/usr/share/nginx/html:ro
     networks:
       - stock_network
 

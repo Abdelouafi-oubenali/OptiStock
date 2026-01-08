@@ -3,62 +3,105 @@ version: "3.9"
 services:
   postgres_db:
     image: postgres:15
-    container_name: postgres_db
+    container_name: postgres_db_prod
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: stock_db
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
-      - demo_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - stock_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d stock_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   keycloak:
     image: quay.io/keycloak/keycloak:21.1.1
-    container_name: keycloak
+    container_name: keycloak_prod
+    restart: unless-stopped
     depends_on:
       postgres_db:
         condition: service_healthy
-    command: start-dev
+    command: start
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_ADMIN: ${KC_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
 
-      # HTTPS required
-      KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HOSTNAME: ${DOMAIN}
+      KC_HOSTNAME_STRICT: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "true"
+      KC_HTTP_ENABLED: "false"
+      KC_HTTPS_ENABLED: "true"
       KC_PROXY: edge
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/certs/cert.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/certs/key.pem
 
-      # Database
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres_db:5432/stock_db
-      KC_DB_USERNAME: admin
-      KC_DB_PASSWORD: admin
+      KC_DB_URL: jdbc:postgresql://postgres_db:5432/${DB_NAME}
+      KC_DB_USERNAME: ${DB_USER}
+      KC_DB_PASSWORD: ${DB_PASSWORD}
 
+      KC_CACHE: local
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+
+    volumes:
+      - ./certs:/opt/keycloak/certs:ro
     ports:
-      - "8180:8080"
+      - "8080:8080"
+    networks:
+      - stock_network
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: spring_app
+    container_name: spring_app_prod
+    restart: unless-stopped
     depends_on:
       postgres_db:
         condition: service_healthy
       keycloak:
         condition: service_started
-    ports:
-      - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      JAVA_OPTS: "-Xmx512m -Xms256m"
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      KEYCLOAK_AUTH-SERVER-URL: https://${DOMAIN}:8080/auth
+      KEYCLOAK_REALM: ${KC_REALM}
+      KEYCLOAK_RESOURCE: ${KC_CLIENT}
+      KEYCLOAK_SSL-REQUIRED: external
+      JAVA_OPTS: "-Xmx1024m -Xms512m -XX:+UseG1GC"
+    networks:
+      - stock_network
+    expose:
+      - "8080"
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_prod
+    restart: unless-stopped
+    depends_on:
+      - keycloak
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/ssl/certs:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+    networks:
+      - stock_network
+
+networks:
+  stock_network:
+    driver: bridge
 
 volumes:
-  demo_postgres_data:
+  postgres_data:

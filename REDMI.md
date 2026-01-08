@@ -451,3 +451,17 @@ Le serveur :
 ## Conclusion
 
 JWT est une solution moderne et efficace pour gérer l’authentification et l’autorisation dans les applications web, à condition de respecter les bonnes pratiques de sécurité.
+
+
+## le problem de change les paramter de keclok 
+
+/opt/keycloak/bin/kcadm.sh config credentials \
+--server http://localhost:8080 \
+--realm master \
+--user admin \
+--password admin123
+
+* next 
+
+/opt/keycloak/bin/kcadm.sh update realms/master \
+-s sslRequired=NONE

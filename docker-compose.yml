@@ -1,7 +1,6 @@
-version: "3.9"
 
 services:
-  postgres:
+  postgres_db:
     image: postgres:15
     container_name: postgres_db
     environment:
@@ -18,108 +17,36 @@ services:
       timeout: 5s
       retries: 5
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    container_name: keycloak
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres_db:5432/stock_db
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: admin
+    command: start-dev
+    ports:
+      - "8180:8080"
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: spring_app
     depends_on:
-      postgres:
+      postgres_db:
         condition: service_healthy
     ports:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       JAVA_OPTS: "-Xmx512m -Xms256m"
-    volumes:
-      - ./logs:/app/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: abdelouafi@admin.com
-      PGADMIN_DEFAULT_PASSWORD: abdelouafi
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-
-  jenkins:
-    image: jenkins/jenkins:lts
-    container_name: jenkins_server
-    user: root
-    ports:
-      - "8082:8080"
-      - "50000:50000"
-    volumes:
-      - demo_jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
-
-  postgres_sonar:
-    image: postgres:15
-    container_name: postgres_sonar
-    environment:
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
-      POSTGRES_DB: sonarqube
-    ports:
-      - "5434:5432"
-    volumes:
-      - demo_sonar_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sonar -d sonarqube"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  sonarqube:
-    image: sonarqube:community
-    container_name: sonarqube_server
-    depends_on:
-      postgres_sonar:
-        condition: service_healthy
-    ports:
-      - "9000:9000"
-    environment:
-      SONAR_JDBC_URL: jdbc:postgresql://postgres_sonar:5432/sonarqube
-      SONAR_JDBC_USERNAME: sonar
-      SONAR_JDBC_PASSWORD: sonar
-      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
-    volumes:
-      - demo_sonarqube_data:/opt/sonarqube/data
-      - demo_sonarqube_logs:/opt/sonarqube/logs
-      - demo_sonarqube_extensions:/opt/sonarqube/extensions
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:21.1.1
-    container_name: keycloak
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
-
-    command:
-      - start-dev
-      - --http-enabled=true
-      - --hostname=161.97.128.217
-      - --hostname-port=8180
-      - --hostname-strict=false
-      - --hostname-strict-https=false
-
-    ports:
-      - "8180:8080"
 
 volumes:
   demo_postgres_data:
-  demo_sonar_postgres_data:
-  demo_jenkins_home:
-  demo_sonarqube_data:
-  demo_sonarqube_logs:
-  demo_sonarqube_extensions:

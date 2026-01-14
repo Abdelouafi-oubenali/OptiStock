@@ -19,7 +19,7 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @PostMapping
-    public ResponseEntity<InventoryDTO> createInventory(@Valid @RequestBody InventoryDTO inventoryDTO) {
+    public ResponseEntity<InventoryDTO> createInventory(@RequestBody InventoryDTO inventoryDTO) {
         InventoryDTO created = inventoryService.createInventory(inventoryDTO);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
@@ -39,7 +39,7 @@ public class InventoryController {
     @PutMapping("/{id}")
     public ResponseEntity<InventoryDTO> updateInventory(
             @PathVariable UUID id,
-            @Valid @RequestBody InventoryDTO inventoryDTO) {
+             @RequestBody InventoryDTO inventoryDTO) {
         InventoryDTO updated = inventoryService.updateInventory(id, inventoryDTO);
         return ResponseEntity.ok(updated);
     }

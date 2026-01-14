@@ -65,30 +65,56 @@ public class InventoryServiceImp implements InventoryService {
     @Override
     public InventoryDTO updateInventory(UUID id, InventoryDTO inventoryDTO) {
 
-        Optional<Inventory> existingInventoryProducts = inventoryRepository
-                .findByProductIdAndWarehouseId(inventoryDTO.getProduct_id(), inventoryDTO.getWarehouse_id());
-        if (existingInventoryProducts.isPresent()) {
-            throw new RuntimeException("Un inventory pour ce produit dans ce warehouse existe déjà !");
+        if (id == null) {
+            throw new IllegalArgumentException("Inventory id must not be null");
         }
 
         Inventory existingInventory = inventoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inventory non trouvé avec l'id: " + id));
+                .orElseThrow(() ->
+                        new RuntimeException("Inventory non trouvé avec l'id: " + id)
+                );
 
-        Warehouse warehouse = warehouseRepository.findById(inventoryDTO.getWarehouse_id())
-                .orElseThrow(() -> new RuntimeException("Warehouse non trouvé"));
-        Product product = productRepository.findById(inventoryDTO.getProduct_id())
-                .orElseThrow(() -> new RuntimeException("Product non trouvé"));
+        Optional<Inventory> existingInventoryProducts =
+                inventoryRepository.findByProductIdAndWarehouseId(
+                        inventoryDTO.getProduct_id(),
+                        inventoryDTO.getWarehouse_id()
+                );
 
-        existingInventory.setQtyOnHand(inventoryDTO.getQtyOnHand());
-        existingInventory.setQtyReserved(inventoryDTO.getQtyReserved());
-        existingInventory.setReferenceDocument(inventoryDTO.getReferenceDocument());
-        existingInventory.setWarehouse(warehouse);
-        existingInventory.setProduct(product);
+        if (existingInventoryProducts.isPresent() &&
+                !existingInventoryProducts.get().getId().equals(existingInventory.getId())) {
+
+            throw new RuntimeException(
+                    "Un inventory pour ce produit dans ce warehouse existe déjà !"
+            );
+        }
+
+        if (inventoryDTO.getWarehouse_id() != null) {
+            Warehouse warehouse = warehouseRepository.findById(inventoryDTO.getWarehouse_id())
+                    .orElseThrow(() -> new RuntimeException("Warehouse non trouvé"));
+            existingInventory.setWarehouse(warehouse);
+        }
+
+        if (inventoryDTO.getProduct_id() != null) {
+            Product product = productRepository.findById(inventoryDTO.getProduct_id())
+                    .orElseThrow(() -> new RuntimeException("Product non trouvé"));
+            existingInventory.setProduct(product);
+        }
+
+        if (inventoryDTO.getQtyOnHand() != null) {
+            existingInventory.setQtyOnHand(inventoryDTO.getQtyOnHand());
+        }
+
+        if (inventoryDTO.getQtyReserved() != null) {
+            existingInventory.setQtyReserved(inventoryDTO.getQtyReserved());
+        }
+
+        if (inventoryDTO.getReferenceDocument() != null) {
+            existingInventory.setReferenceDocument(inventoryDTO.getReferenceDocument());
+        }
 
         Inventory updated = inventoryRepository.save(existingInventory);
         return mapper.toDTO(updated);
     }
-
     @Override
     public void deleteInventory(UUID id) {
         Inventory inventory = inventoryRepository.findById(id)

@@ -42,4 +42,10 @@ public class UserController {
     public ApiResponse deleteUser(@PathVariable UUID id) {
         return userService.deleteUser(id);
     }
+
+    @GetMapping("/email/{email}")
+    public User getUserByEmail(@PathVariable String email) {
+        return userService.getUserByEmail(email);
+    }
+
 }

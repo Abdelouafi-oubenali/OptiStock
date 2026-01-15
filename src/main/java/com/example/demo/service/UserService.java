@@ -11,4 +11,5 @@ public interface UserService {
     ApiResponse updateUser(UUID id, User user);
     ApiResponse deleteUser(UUID id);
     List<User> getAllUsers();
+    User getUserByEmail(String email) ;
 }

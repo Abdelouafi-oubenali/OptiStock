@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ApiResponse;
+import com.example.demo.dto.UserDTO;
 import com.example.demo.entity.User;
 import com.example.demo.enums.Role;
 import com.example.demo.exception.UserNotFoundException;
@@ -80,7 +81,7 @@ class UserServiceImplTest {
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
         // Act
-        User found = userService.getUserById(user.getId());
+        UserDTO found = userService.getUserById(user.getId());
 
         // Assert
         assertNotNull(found);
@@ -155,7 +156,7 @@ class UserServiceImplTest {
         List<User> users = List.of(user);
         when(userRepository.findAll()).thenReturn(users);
 
-        List<User> result = userService.getAllUsers();
+        List<UserDTO> result = userService.getAllUsers();
 
         assertEquals(1, result.size());
         assertEquals("John", result.get(0).getFirstName());

@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.LoginDTO;
 import com.example.demo.dto.RegisterDTO;
+import com.example.demo.dto.UserDTO;
 import com.example.demo.entity.User;
 import com.example.demo.enums.Role;
 import com.example.demo.repository.UserRepository;
@@ -50,6 +51,7 @@ public class AuthServiceImpl implements AuthService {
 
         return user;
     }
+
 
     @Override
     public boolean emailExists(String email) {

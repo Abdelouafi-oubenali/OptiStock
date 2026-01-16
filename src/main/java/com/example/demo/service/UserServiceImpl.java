@@ -1,8 +1,10 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ApiResponse;
+import com.example.demo.dto.UserDTO;
 import com.example.demo.entity.User;
 import com.example.demo.exception.UserNotFoundException;
+import com.example.demo.mapper.UserMapper;
 import com.example.demo.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,11 +17,13 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder ;
+    private final UserMapper userMapper ;
 
-    public UserServiceImpl(UserRepository userRepository , PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(UserRepository userRepository , PasswordEncoder passwordEncoder , UserMapper userMapper) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder ;
+        this.userMapper = userMapper ;
     }
 
     @Override
@@ -41,10 +45,14 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public User getUserById(UUID id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Utilisateur introuvable avec id: " + id));
+    public UserDTO getUserById(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException("Utilisateur introuvable avec id: " + id));
+
+        return userMapper.toDTO(user);
     }
+
 
     @Override
     public ApiResponse updateUser(UUID id, User updatedUser) {
@@ -71,7 +79,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserDTO> getAllUsers() {
+        List<User> users =  userRepository.findAll();
+
+        return users.stream()
+                .map(userMapper::toDTO)
+                .toList() ;
     }
 }

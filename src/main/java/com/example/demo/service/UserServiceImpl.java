@@ -38,9 +38,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
+    public UserDTO getUserByEmail(String email) {
+        User user =  userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Utilisateur avec cet email n'existe pas"));
+        return userMapper.toDTO(user) ;
     }
 
 

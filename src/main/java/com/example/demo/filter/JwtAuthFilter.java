@@ -43,8 +43,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (endpoint.startsWith("/api/auth/") ||
                 endpoint.startsWith("/api/register/") ||
-                endpoint.equals("/api/products/test/elk") ||
-                endpoint.equals("/api/products/health") ||
+                endpoint.equals("/api/products") ||
+                endpoint.startsWith("/api/products/") ||
                 endpoint.startsWith("/api/public/")) {
             filterChain.doFilter(request, response);
             return;

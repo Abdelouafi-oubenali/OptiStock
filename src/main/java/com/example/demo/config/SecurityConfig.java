@@ -57,12 +57,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/products/health").permitAll()
                         .requestMatchers("/api/products/test/**").permitAll()
                         .requestMatchers("/articles/**").permitAll()
+                        .requestMatchers("/api/products/**").permitAll()
 
                         // Admin
                         .requestMatchers("/api/carriers/**").hasRole("ADMIN")
                         .requestMatchers("/api/suppliers/**").hasRole("ADMIN")
                         .requestMatchers("/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/products/**").hasRole("ADMIN")
 
                         // Admin + Warehouse Manager
                         .requestMatchers("/api/inventories/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")

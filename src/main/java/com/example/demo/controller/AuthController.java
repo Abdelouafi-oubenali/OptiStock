@@ -4,6 +4,8 @@ import com.example.demo.dto.AuthRequest;
 import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.RegisterDTO;
 import com.example.demo.entity.User;
+import com.example.demo.enums.Role;
+import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,10 +16,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,6 +29,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository ;
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -32,8 +37,9 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService , UserRepository userRepository) {
         this.authService = authService;
+        this.userRepository = userRepository ;
     }
 
     @PostMapping("/register")
@@ -96,8 +102,13 @@ public class AuthController {
                     )
             );
 
-            String accessToken = jwtUtil.generateAccessToken(authRequest.getEmail());
-            String refreshToken = jwtUtil.generateRefreshToken(authRequest.getEmail());
+
+            User user = userRepository.findByEmail(authRequest.getEmail())
+                    .orElseThrow(() ->  new UsernameNotFoundException("User not found")) ;
+
+
+            String accessToken = jwtUtil.generateAccessToken(authRequest.getEmail() , user.getRole()  );
+            String refreshToken = jwtUtil.generateRefreshToken(authRequest.getEmail() , user.getRole());
 
             AuthResponse response = new AuthResponse(accessToken, refreshToken);
 
@@ -164,7 +175,8 @@ public class AuthController {
             }
 
             String email = jwtUtil.extractUsername(refreshToken);
-            String newAccessToken = jwtUtil.generateAccessToken(email);
+            Role role = jwtUtil.extractRole(refreshToken) ;
+            String newAccessToken = jwtUtil.generateAccessToken(email , role );
 
             log.info("REFRESH_TOKEN_SUCCESS - Email: {}, IP: {}, Time: {}",
                     email,

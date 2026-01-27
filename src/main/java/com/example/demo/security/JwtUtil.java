@@ -1,5 +1,6 @@
 package com.example.demo.security;
 
+import com.example.demo.enums.Role;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
@@ -21,9 +22,10 @@ public class JwtUtil {
     private long refreshExpiration;
 
     // Access Token
-    public String generateAccessToken(String email) {
+    public String generateAccessToken(String email , Role role ) {
         return Jwts.builder()
                 .setSubject(email)
+                .claim("role" , role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + accessExpiration))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
@@ -31,9 +33,10 @@ public class JwtUtil {
     }
 
     // Refresh Token
-    public String generateRefreshToken(String email) {
+    public String generateRefreshToken(String email , Role role) {
         return Jwts.builder()
                 .setSubject(email)
+                .claim("role" , role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + refreshExpiration))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
@@ -49,6 +52,19 @@ public class JwtUtil {
                 .getBody()
                 .getSubject();
     }
+
+    //role
+    public Role extractRole(String token) throws JwtException {
+        String role = Jwts.parserBuilder()
+                .setSigningKey(secret.getBytes())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
+
+        return Role.valueOf(role);
+    }
+
 
     // Validation
     public boolean validateToken(String token) {

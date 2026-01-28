@@ -3,12 +3,9 @@ package com.example.demo.mapper;
 import com.example.demo.dto.PurchaseOrderDTO;
 import com.example.demo.entity.PurchaseOrder;
 import org.mapstruct.Mapper;
-import org.mapstruct.factory.Mappers;
 
-@Mapper
+@Mapper(componentModel = "spring")
 public interface PurchaseOrderMapper {
-
-    PurchaseOrderMapper INSTANCE = Mappers.getMapper(PurchaseOrderMapper.class);
 
     PurchaseOrderDTO toDTO(PurchaseOrder order);
 

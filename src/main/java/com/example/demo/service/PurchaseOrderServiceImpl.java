@@ -27,43 +27,65 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
-
-    private final PurchaseOrderMapper orderMapper = PurchaseOrderMapper.INSTANCE;
-    private final PurchaseOrderLineMapper lineMapper = PurchaseOrderLineMapper.INSTANCE;
+    private final PurchaseOrderMapper orderMapper;
+    private final PurchaseOrderLineMapper lineMapper;
 
     @Override
     @Transactional
     public PurchaseOrderDTO createPurchaseOrder(PurchaseOrderDTO purchaseOrderDTO) {
+
         Supplier supplier = supplierRepository.findById(purchaseOrderDTO.getSupplierId())
-                .orElseThrow(() -> new RuntimeException("Fournisseur non trouvé avec l'id: " + purchaseOrderDTO.getSupplierId()));
+                .orElseThrow(() -> new RuntimeException(
+                        "Fournisseur non trouvé avec l'id: " + purchaseOrderDTO.getSupplierId()));
 
         User createdBy = userRepository.findById(purchaseOrderDTO.getCreatedByUserId())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé avec l'id: " + purchaseOrderDTO.getCreatedByUserId()));
+                .orElseThrow(() -> new RuntimeException(
+                        "Utilisateur non trouvé avec l'id: " + purchaseOrderDTO.getCreatedByUserId()));
 
-        PurchaseOrder purchaseOrder = orderMapper.toEntity(purchaseOrderDTO);
+        // Create the purchase order
+        PurchaseOrder purchaseOrder = new PurchaseOrder();
         purchaseOrder.setSupplier(supplier);
         purchaseOrder.setCreatedBy(createdBy);
         purchaseOrder.setStatus(PurchaseOrderStatus.DRAFT);
+        purchaseOrder.setExpectedDelivery(purchaseOrderDTO.getExpectedDelivery());
+        purchaseOrder.setTotalAmount(purchaseOrderDTO.getTotalAmount());
 
-        PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
-
+        // Create order lines and establish bidirectional relationship
         if (purchaseOrderDTO.getOrderLines() != null && !purchaseOrderDTO.getOrderLines().isEmpty()) {
+
             List<PurchaseOrderLine> orderLines = purchaseOrderDTO.getOrderLines().stream()
                     .map(lineDTO -> {
-                        PurchaseOrderLine line = lineMapper.toEntity(lineDTO);
-                        line.setPurchaseOrder(savedOrder);
+                        // Verify product exists
                         Product product = productRepository.findById(lineDTO.getProductId())
-                                .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + lineDTO.getProductId()));
+                                .orElseThrow(() -> new RuntimeException(
+                                        "Produit non trouvé avec l'id: " + lineDTO.getProductId()));
+
+                        System.out.println("Setting product: " + product.getId());
+
+                        // Create and populate the line
+                        PurchaseOrderLine line = new PurchaseOrderLine();
                         line.setProduct(product);
+                        line.setPurchaseOrder(purchaseOrder); // Set the purchase order reference
+                        line.setQuantity(lineDTO.getQuantity());
+                        line.setUnitPrice(lineDTO.getUnitPrice());
+
+                        if (lineDTO.getBackorder() != null) {
+                            line.setBackorder(lineDTO.getBackorder());
+                        }
+
                         return line;
                     })
                     .collect(Collectors.toList());
-            purchaseOrderLineRepository.saveAll(orderLines);
+
+            // Set the order lines on the purchase order
+            purchaseOrder.setOrderLines(orderLines);
         }
+
+        // Save the purchase order (should cascade to order lines)
+        PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
 
         return orderMapper.toDTO(savedOrder);
     }
-
     @Override
     public PurchaseOrderDTO getPurchaseOrderById(UUID id) {
         PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
@@ -98,11 +120,20 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
             List<PurchaseOrderLine> newOrderLines = purchaseOrderDTO.getOrderLines().stream()
                     .map(lineDTO -> {
-                        PurchaseOrderLine line = lineMapper.toEntity(lineDTO);
-                        line.setPurchaseOrder(existingOrder);
+                        // Verify product exists
                         Product product = productRepository.findById(lineDTO.getProductId())
                                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'id: " + lineDTO.getProductId()));
+
+                        // Create and populate the line directly instead of using mapper
+                        PurchaseOrderLine line = new PurchaseOrderLine();
                         line.setProduct(product);
+                        line.setPurchaseOrder(existingOrder);
+                        line.setQuantity(lineDTO.getQuantity());
+                        line.setUnitPrice(lineDTO.getUnitPrice());
+                        if (lineDTO.getBackorder() != null) {
+                            line.setBackorder(lineDTO.getBackorder());
+                        }
+
                         return line;
                     })
                     .collect(Collectors.toList());

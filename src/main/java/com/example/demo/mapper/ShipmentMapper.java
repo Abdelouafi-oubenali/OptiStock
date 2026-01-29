@@ -12,10 +12,8 @@ public interface ShipmentMapper {
     ShipmentMapper INSTANCE = Mappers.getMapper(ShipmentMapper.class);
 
     @Mapping(source = "salesOrder.id", target = "salesOrderId")
-    @Mapping(source = "carrier.id", target = "carrierId")
     ShipmentDTO toDTO(Shipment entity);
 
     @Mapping(source = "salesOrderId", target = "salesOrder.id")
-    @Mapping(source = "carrierId", target = "carrier.id")
     Shipment toEntity(ShipmentDTO dto);
 }

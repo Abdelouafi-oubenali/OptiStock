@@ -54,12 +54,6 @@ public class ShipmentController {
         return ResponseEntity.ok(shipments);
     }
 
-    @GetMapping("/carrier/{carrierId}")
-    public ResponseEntity<List<ShipmentDTO>> getShipmentsByCarrier(@PathVariable UUID carrierId) {
-        List<ShipmentDTO> shipments = shipmentService.getShipmentsByCarrier(carrierId);
-        return ResponseEntity.ok(shipments);
-    }
-
     @GetMapping("/status/{status}")
     public ResponseEntity<List<ShipmentDTO>> getShipmentsByStatus(@PathVariable ShipmentStatus status) {
         List<ShipmentDTO> shipments = shipmentService.getShipmentsByStatus(status);

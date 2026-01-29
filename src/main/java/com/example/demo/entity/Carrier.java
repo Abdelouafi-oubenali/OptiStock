@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -26,7 +25,4 @@ public class Carrier {
     @Enumerated(EnumType.STRING)
     private CarrierStatus status;
 
-    // CORRECTION - ajouter cette relation
-    @OneToMany(mappedBy = "carrier", fetch = FetchType.LAZY)
-    private List<Shipment> shipments;
 }

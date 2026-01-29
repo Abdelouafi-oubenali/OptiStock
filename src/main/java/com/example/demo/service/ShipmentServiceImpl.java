@@ -1,12 +1,10 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.ShipmentDTO;
-import com.example.demo.entity.Carrier;
 import com.example.demo.entity.SalesOrder;
 import com.example.demo.entity.Shipment;
 import com.example.demo.enums.ShipmentStatus;
 import com.example.demo.mapper.ShipmentMapper;
-import com.example.demo.repository.CarrierRepository;
 import com.example.demo.repository.SalesOrderRepository;
 import com.example.demo.repository.ShipmentRepository;
 import com.example.demo.service.ShipmentService;
@@ -26,7 +24,6 @@ public class ShipmentServiceImpl implements ShipmentService {
 
     private final ShipmentRepository shipmentRepository;
     private final SalesOrderRepository salesOrderRepository;
-    private final CarrierRepository carrierRepository;
 
     private final ShipmentMapper mapper = ShipmentMapper.INSTANCE;
 
@@ -52,12 +49,8 @@ public class ShipmentServiceImpl implements ShipmentService {
         SalesOrder salesOrder = salesOrderRepository.findById(dto.getSalesOrderId())
                 .orElseThrow(() -> new RuntimeException("Commande introuvable avec l'id : " + dto.getSalesOrderId()));
 
-        Carrier carrier = carrierRepository.findById(dto.getCarrierId())
-                .orElseThrow(() -> new RuntimeException("Transporteur introuvable avec l'id : " + dto.getCarrierId()));
-
         Shipment shipment = mapper.toEntity(dto);
         shipment.setSalesOrder(salesOrder);
-        shipment.setCarrier(carrier);
 
         shipment.setPlannedDate(adjustDate(dto.getPlannedDate()));
         shipment.setShippedDate(adjustDate(dto.getShippedDate()));
@@ -104,12 +97,6 @@ public class ShipmentServiceImpl implements ShipmentService {
             existing.setSalesOrder(salesOrder);
         }
 
-        if (dto.getCarrierId() != null) {
-            Carrier carrier = carrierRepository.findById(dto.getCarrierId())
-                    .orElseThrow(() -> new RuntimeException("Transporteur introuvable avec l'id: " + dto.getCarrierId()));
-            existing.setCarrier(carrier);
-        }
-
         return mapper.toDTO(shipmentRepository.save(existing));
     }
 
@@ -124,14 +111,6 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     public List<ShipmentDTO> getShipmentsByOrder(UUID salesOrderId) {
         return shipmentRepository.findBySalesOrderId(salesOrderId)
-                .stream()
-                .map(mapper::toDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<ShipmentDTO> getShipmentsByCarrier(UUID carrierId) {
-        return shipmentRepository.findByCarrierId(carrierId)
                 .stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());

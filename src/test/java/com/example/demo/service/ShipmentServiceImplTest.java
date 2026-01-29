@@ -1,10 +1,8 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.dto.ShipmentDTO;
-import com.example.demo.entity.Carrier;
 import com.example.demo.entity.SalesOrder;
 import com.example.demo.entity.Shipment;
-import com.example.demo.repository.CarrierRepository;
 import com.example.demo.repository.SalesOrderRepository;
 import com.example.demo.repository.ShipmentRepository;
 import org.junit.jupiter.api.Test;
@@ -28,9 +26,6 @@ class ShipmentServiceImplTest {
 
     @Mock
     private SalesOrderRepository salesOrderRepository;
-
-    @Mock
-    private CarrierRepository carrierRepository;
 
     @InjectMocks
     private ShipmentServiceImpl shipmentService;

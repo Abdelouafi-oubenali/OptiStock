@@ -29,7 +29,4 @@ public class ShipmentDTO {
 
     @NotNull(message = "Le sales_order_id est requis !")
     private UUID salesOrderId;
-
-    @NotNull(message = "Le carrier_id est requis !")
-    private UUID carrierId;
 }

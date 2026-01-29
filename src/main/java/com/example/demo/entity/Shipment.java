@@ -27,9 +27,4 @@ public class Shipment {
     @JoinColumn(name = "sales_order_id")
     private SalesOrder salesOrder;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "carrier_id")
-    private Carrier carrier;
-
-
 }

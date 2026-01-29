@@ -13,7 +13,6 @@ public interface ShipmentService {
     ShipmentDTO updateShipment(UUID id, ShipmentDTO shipmentDTO);
     void deleteShipment(UUID id);
     List<ShipmentDTO> getShipmentsByOrder(UUID salesOrderId);
-    List<ShipmentDTO> getShipmentsByCarrier(UUID carrierId);
     List<ShipmentDTO> getShipmentsByStatus(ShipmentStatus status);
      ShipmentDTO updateShipmentStatus(UUID id, ShipmentStatus status) ;
 }
